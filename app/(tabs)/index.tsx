@@ -7,16 +7,17 @@ import {
   RefreshControl,
   TouchableOpacity,
   Platform,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Search, MapPin, Filter, Crown } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { FoodCard } from '@/components/FoodCard';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 
 interface FoodItem {
@@ -43,23 +44,23 @@ const MEAL_TYPES = [
 export default function HomeScreen() {
   const { address } = useLocation();
   const { user } = useAuth();
+  const { isSubscribed } = useSubscription();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('all');
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [isSubscribed] = useState(false); // Mock subscription status
 
   useEffect(() => {
     loadFoodItems();
   }, []);
 
   const loadFoodItems = async () => {
-    // Mock data with beautiful food images from Pexels
+    // Enhanced mock data with more diverse home cooks and beautiful food images
     const mockFoodItems: FoodItem[] = [
       {
         id: '1',
         title: 'Homemade Pasta Carbonara',
-        description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese',
+        description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese made with love',
         price: 16.99,
         image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'Maria Rodriguez',
@@ -72,7 +73,7 @@ export default function HomeScreen() {
       {
         id: '2',
         title: 'Artisan Avocado Toast',
-        description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, and microgreens',
+        description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, microgreens, and hemp seeds',
         price: 12.50,
         image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'Sarah Johnson',
@@ -85,7 +86,7 @@ export default function HomeScreen() {
       {
         id: '3',
         title: 'Pan-Seared Salmon',
-        description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce',
+        description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
         price: 24.99,
         image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'David Chen',
@@ -98,7 +99,7 @@ export default function HomeScreen() {
       {
         id: '4',
         title: 'Authentic Ramen Bowl',
-        description: 'Rich tonkotsu broth with handmade noodles, chashu pork, and soft-boiled egg',
+        description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
         price: 18.99,
         image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'Kenji Tanaka',
@@ -111,7 +112,7 @@ export default function HomeScreen() {
       {
         id: '5',
         title: 'Mediterranean Bowl',
-        description: 'Quinoa bowl with grilled chicken, hummus, olives, and fresh vegetables',
+        description: 'Quinoa bowl with grilled chicken, hummus, olives, cucumber, and fresh herbs',
         price: 15.99,
         image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'Elena Papadopoulos',
@@ -120,6 +121,136 @@ export default function HomeScreen() {
         prepTime: 20,
         mealType: 'lunch',
         tags: ['Mediterranean', 'Healthy', 'Protein', 'Fresh'],
+      },
+      {
+        id: '6',
+        title: 'French Croissant Benedict',
+        description: 'Buttery croissant with poached eggs, hollandaise sauce, Canadian bacon, and chives',
+        price: 14.99,
+        image: 'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Pierre Dubois',
+        cookRating: 4.8,
+        distance: 2.3,
+        prepTime: 20,
+        mealType: 'breakfast',
+        tags: ['French', 'Brunch', 'Eggs', 'Gourmet'],
+      },
+      {
+        id: '7',
+        title: 'Thai Green Curry',
+        description: 'Aromatic green curry with coconut milk, Thai basil, vegetables, and jasmine rice',
+        price: 17.50,
+        image: 'https://images.pexels.com/photos/2347311/pexels-photo-2347311.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Siriporn Nakamura',
+        cookRating: 4.7,
+        distance: 1.9,
+        prepTime: 30,
+        mealType: 'dinner',
+        tags: ['Thai', 'Spicy', 'Coconut', 'Aromatic'],
+      },
+      {
+        id: '8',
+        title: 'BBQ Pulled Pork Sandwich',
+        description: 'Slow-cooked pulled pork with tangy BBQ sauce on brioche bun with coleslaw',
+        price: 13.99,
+        image: 'https://images.pexels.com/photos/1633525/pexels-photo-1633525.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Jake Williams',
+        cookRating: 4.5,
+        distance: 2.7,
+        prepTime: 15,
+        mealType: 'lunch',
+        tags: ['BBQ', 'Pork', 'Sandwich', 'Comfort Food'],
+      },
+      {
+        id: '9',
+        title: 'Vegan Buddha Bowl',
+        description: 'Colorful bowl with quinoa, roasted vegetables, tahini dressing, and mixed seeds',
+        price: 14.50,
+        image: 'https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Luna Martinez',
+        cookRating: 4.6,
+        distance: 1.4,
+        prepTime: 25,
+        mealType: 'lunch',
+        tags: ['Vegan', 'Healthy', 'Colorful', 'Nutritious'],
+      },
+      {
+        id: '10',
+        title: 'Indian Butter Chicken',
+        description: 'Tender chicken in rich tomato-cream sauce with basmati rice and fresh naan bread',
+        price: 19.99,
+        image: 'https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Priya Sharma',
+        cookRating: 4.9,
+        distance: 2.0,
+        prepTime: 40,
+        mealType: 'dinner',
+        tags: ['Indian', 'Curry', 'Creamy', 'Spiced'],
+      },
+      {
+        id: '11',
+        title: 'Korean Bibimbap',
+        description: 'Mixed rice bowl with seasoned vegetables, marinated beef, fried egg, and gochujang',
+        price: 16.50,
+        image: 'https://images.pexels.com/photos/4518843/pexels-photo-4518843.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Min-jun Kim',
+        cookRating: 4.8,
+        distance: 1.7,
+        prepTime: 30,
+        mealType: 'lunch',
+        tags: ['Korean', 'Rice Bowl', 'Healthy', 'Balanced'],
+      },
+      {
+        id: '12',
+        title: 'Mexican Street Tacos',
+        description: 'Authentic corn tortillas with carnitas, onions, cilantro, and lime - 3 tacos',
+        price: 11.99,
+        image: 'https://images.pexels.com/photos/4958792/pexels-photo-4958792.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Carlos Mendoza',
+        cookRating: 4.7,
+        distance: 1.3,
+        prepTime: 20,
+        mealType: 'lunch',
+        tags: ['Mexican', 'Street Food', 'Authentic', 'Spicy'],
+      },
+      {
+        id: '13',
+        title: 'Moroccan Tagine',
+        description: 'Slow-cooked lamb with apricots, almonds, and aromatic spices, served with couscous',
+        price: 22.99,
+        image: 'https://images.pexels.com/photos/8477552/pexels-photo-8477552.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Fatima Al-Zahra',
+        cookRating: 4.9,
+        distance: 2.5,
+        prepTime: 50,
+        mealType: 'dinner',
+        tags: ['Moroccan', 'Lamb', 'Exotic', 'Aromatic'],
+      },
+      {
+        id: '14',
+        title: 'Greek Moussaka',
+        description: 'Layered eggplant casserole with ground lamb, béchamel sauce, and fresh herbs',
+        price: 18.50,
+        image: 'https://images.pexels.com/photos/5949888/pexels-photo-5949888.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Dimitri Kostas',
+        cookRating: 4.6,
+        distance: 2.2,
+        prepTime: 45,
+        mealType: 'dinner',
+        tags: ['Greek', 'Casserole', 'Traditional', 'Hearty'],
+      },
+      {
+        id: '15',
+        title: 'Vietnamese Pho',
+        description: 'Traditional beef pho with rice noodles, herbs, bean sprouts, and aromatic broth',
+        price: 15.99,
+        image: 'https://images.pexels.com/photos/4518843/pexels-photo-4518843.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Linh Nguyen',
+        cookRating: 4.8,
+        distance: 1.6,
+        prepTime: 35,
+        mealType: 'lunch',
+        tags: ['Vietnamese', 'Soup', 'Noodles', 'Comfort'],
       },
     ];
     setFoodItems(mockFoodItems);

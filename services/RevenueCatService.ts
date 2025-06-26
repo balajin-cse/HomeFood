@@ -6,7 +6,7 @@ if (Platform.OS !== 'web') {
   try {
     Purchases = require('react-native-purchases').default;
   } catch (error) {
-    console.warn('RevenueCat not available:', error);
+    console.warn('RevenueCat not available on web platform');
   }
 }
 
@@ -30,6 +30,19 @@ export interface CustomerInfo {
     active: { [key: string]: any };
     all: { [key: string]: any };
   };
+  originalPurchaseDate?: string;
+  latestExpirationDate?: string;
+}
+
+export interface Offering {
+  identifier: string;
+  serverDescription: string;
+  availablePackages: PurchasePackage[];
+}
+
+export interface Offerings {
+  current?: Offering;
+  all: { [key: string]: Offering };
 }
 
 class RevenueCatService {
@@ -38,28 +51,29 @@ class RevenueCatService {
 
   async configure(apiKey: string): Promise<void> {
     if (Platform.OS === 'web' || !Purchases) {
-      // Mock configuration for web or when RevenueCat is not available
+      // Mock configuration for web
       this.isConfigured = true;
-      console.log('RevenueCat configured (mock) with API key:', apiKey);
+      console.log('RevenueCat configured (web mock) with API key:', apiKey);
       return;
     }
 
     try {
-      // Configure RevenueCat for native platforms
       await Purchases.configure({ apiKey });
       this.isConfigured = true;
       console.log('RevenueCat configured successfully');
     } catch (error) {
       console.error('Failed to configure RevenueCat:', error);
-      this.isConfigured = false;
+      throw error;
     }
   }
 
-  async getOfferings(): Promise<{ current?: { availablePackages: PurchasePackage[] } }> {
+  async getOfferings(): Promise<Offerings> {
     if (Platform.OS === 'web' || !Purchases || !this.isConfigured) {
-      // Mock offerings for web or when RevenueCat is not available
+      // Mock offerings for web
       return {
         current: {
+          identifier: 'default',
+          serverDescription: 'Default offering',
           availablePackages: [
             {
               identifier: 'daily_plan',
@@ -70,7 +84,7 @@ class RevenueCatService {
                 priceString: '$4.99',
                 currencyCode: 'USD',
                 title: 'Daily Explorer',
-                description: 'Daily access to homemade meals with same-day delivery and customer support'
+                description: 'Perfect for trying new dishes daily with same-day delivery and customer support'
               }
             },
             {
@@ -82,7 +96,7 @@ class RevenueCatService {
                 priceString: '$24.99',
                 currencyCode: 'USD',
                 title: 'Weekly Foodie',
-                description: 'Weekly access with priority ordering, meal planning, and free delivery'
+                description: 'Most popular! Weekly access with priority ordering, meal planning, and free delivery'
               }
             },
             {
@@ -94,11 +108,12 @@ class RevenueCatService {
                 priceString: '$79.99',
                 currencyCode: 'USD',
                 title: 'Monthly Gourmet',
-                description: 'Monthly access with exclusive chef access, custom requests, and VIP events'
+                description: 'Best value! Monthly access with exclusive chef access, custom requests, and VIP events'
               }
             }
           ]
-        }
+        },
+        all: {}
       };
     }
 
@@ -107,7 +122,7 @@ class RevenueCatService {
       return offerings;
     } catch (error) {
       console.error('Failed to get offerings:', error);
-      return { current: { availablePackages: [] } };
+      return { current: undefined, all: {} };
     }
   }
 
@@ -122,7 +137,9 @@ class RevenueCatService {
           entitlements: {
             active: { premium: { isActive: true } },
             all: { premium: { isActive: true } }
-          }
+          },
+          originalPurchaseDate: new Date().toISOString(),
+          latestExpirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         }
       };
     }
@@ -145,7 +162,9 @@ class RevenueCatService {
         entitlements: {
           active: this.mockSubscriptionActive ? { premium: { isActive: true } } : {},
           all: this.mockSubscriptionActive ? { premium: { isActive: true } } : {}
-        }
+        },
+        originalPurchaseDate: this.mockSubscriptionActive ? new Date().toISOString() : undefined,
+        latestExpirationDate: this.mockSubscriptionActive ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : undefined
       };
     }
 
@@ -179,6 +198,12 @@ class RevenueCatService {
 
   isSubscriptionActive(customerInfo: CustomerInfo): boolean {
     return Object.keys(customerInfo.entitlements.active).length > 0;
+  }
+
+  async setMockSubscription(active: boolean): Promise<void> {
+    if (Platform.OS === 'web') {
+      this.mockSubscriptionActive = active;
+    }
   }
 }
 
