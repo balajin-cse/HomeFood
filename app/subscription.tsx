@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ArrowLeft, Crown, Check, Star, Zap, Shield } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 
 interface SubscriptionPlan {
@@ -28,7 +30,7 @@ interface SubscriptionPlan {
 
 const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
-    id: 'daily',
+    id: 'daily_plan',
     name: 'Daily Explorer',
     price: 4.99,
     period: 'day',
@@ -42,7 +44,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     icon: <Zap size={24} color="white" />,
   },
   {
-    id: 'weekly',
+    id: 'weekly_plan',
     name: 'Weekly Foodie',
     price: 24.99,
     period: 'week',
@@ -60,7 +62,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     icon: <Star size={24} color="white" />,
   },
   {
-    id: 'monthly',
+    id: 'monthly_plan',
     name: 'Monthly Gourmet',
     price: 79.99,
     period: 'month',
@@ -80,17 +82,45 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export default function SubscriptionScreen() {
-  const [selectedPlan, setSelectedPlan] = useState('weekly');
+  const { packages, purchasePackage } = useSubscription();
+  const [selectedPlan, setSelectedPlan] = useState('weekly_plan');
   const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async () => {
     setLoading(true);
     
-    // Simulate subscription process
-    setTimeout(() => {
+    try {
+      // Find the selected package
+      const selectedPackage = packages.find(pkg => pkg.identifier === selectedPlan);
+      
+      if (selectedPackage) {
+        const success = await purchasePackage(selectedPackage);
+        if (success) {
+          Alert.alert(
+            'Subscription Activated!',
+            'Welcome to HomeFood Premium! You can now order from amazing home cooks.',
+            [
+              { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
+            ]
+          );
+        } else {
+          Alert.alert('Purchase Failed', 'Please try again or contact support.');
+        }
+      } else {
+        // Fallback for web demo
+        Alert.alert(
+          'Subscription Activated!',
+          'Welcome to HomeFood Premium! You can now order from amazing home cooks.',
+          [
+            { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
+          ]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
       setLoading(false);
-      router.replace('/(tabs)');
-    }, 2000);
+    }
   };
 
   const selectedPlanData = SUBSCRIPTION_PLANS.find(plan => plan.id === selectedPlan);

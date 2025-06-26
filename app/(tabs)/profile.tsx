@@ -9,13 +9,14 @@ import {
 } from 'react-native';
 import { Avatar, Card, List, Switch, Button } from 'react-native-paper';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const { isSubscribed } = useSubscription();
   const [notifications, setNotifications] = useState(true);
-  const [isSubscribed] = useState(false); // Mock subscription status
 
   const handleLogout = () => {
     Alert.alert(
@@ -32,37 +33,37 @@ export default function ProfileScreen() {
     {
       title: 'Edit Profile',
       icon: 'account-edit',
-      onPress: () => {/* Navigate to edit profile */},
+      onPress: () => router.push('/edit-profile'),
     },
     {
       title: 'Delivery Address',
       icon: 'map-marker',
-      onPress: () => {/* Navigate to address management */},
+      onPress: () => router.push('/delivery-address'),
     },
     {
       title: 'Payment Methods',
       icon: 'credit-card',
-      onPress: () => {/* Navigate to payment methods */},
+      onPress: () => router.push('/payment-methods'),
     },
     {
       title: 'Order History',
       icon: 'history',
-      onPress: () => {/* Navigate to order history */},
+      onPress: () => router.push('/order-history'),
     },
     {
       title: 'Favorites',
       icon: 'heart',
-      onPress: () => {/* Navigate to favorites */},
+      onPress: () => router.push('/favorites'),
     },
     {
       title: 'Help & Support',
       icon: 'help-circle',
-      onPress: () => {/* Navigate to help */},
+      onPress: () => router.push('/help-support'),
     },
     {
       title: 'Terms & Privacy',
       icon: 'file-document',
-      onPress: () => {/* Navigate to terms */},
+      onPress: () => router.push('/terms-privacy'),
     },
   ];
 
@@ -108,6 +109,24 @@ export default function ProfileScreen() {
           )}
         </View>
       </Card>
+
+      {!user?.isCook && (
+        <Card style={styles.cookCard}>
+          <View style={styles.cookContent}>
+            <Text style={styles.cookTitle}>Become a Home Cook</Text>
+            <Text style={styles.cookDescription}>
+              Share your culinary skills and earn money by cooking for your community
+            </Text>
+            <Button
+              mode="contained"
+              onPress={() => router.push('/cook-registration')}
+              style={styles.cookButton}
+            >
+              Apply to Cook
+            </Button>
+          </View>
+        </Card>
+      )}
 
       <Card style={styles.settingsCard}>
         <List.Section>
@@ -214,6 +233,31 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
   },
   subscribeButton: {
+    alignSelf: 'flex-start',
+  },
+  cookCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    elevation: 2,
+  },
+  cookContent: {
+    padding: 20,
+  },
+  cookTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    fontFamily: 'Inter-Bold',
+  },
+  cookDescription: {
+    fontSize: 14,
+    color: theme.colors.onSurface,
+    opacity: 0.7,
+    marginBottom: 15,
+    fontFamily: 'Inter-Regular',
+    lineHeight: 20,
+  },
+  cookButton: {
     alignSelf: 'flex-start',
   },
   settingsCard: {
