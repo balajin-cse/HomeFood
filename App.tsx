@@ -36,7 +36,7 @@ const Stack = createStackNavigator();
 const configureRevenueCat = async () => {
   try {
     await Purchases.configure({
-      apiKey: 'your_revenuecat_api_key_here', // Replace with your actual API key
+      apiKey: 'sk_nIolQZWYIazYElnPjPaepSUdFfgej', // Replace with your actual API key
     });
   } catch (error) {
     console.error('Error configuring RevenueCat:', error);
