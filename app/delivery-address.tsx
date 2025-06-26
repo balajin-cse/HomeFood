@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ArrowLeft, MapPin, Plus, Edit, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, MapPin, Plus, CreditCard as Edit, Trash2 } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';

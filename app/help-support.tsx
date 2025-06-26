@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ArrowLeft, HelpCircle, MessageCircle, Phone, Mail, ChevronDown, ChevronRight } from 'lucide-react-native';
+import { ArrowLeft, CircleHelp as HelpCircle, MessageCircle, Phone, Mail, ChevronDown, ChevronRight } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { theme } from '@/constants/theme';
