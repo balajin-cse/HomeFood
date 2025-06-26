@@ -4,12 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { FAB, Card, Button, TextInput, Chip } from 'react-native-paper';
-import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { theme } from '@/constants/theme';
 
 interface MenuItem {
   id: string;
@@ -22,7 +21,7 @@ interface MenuItem {
   isActive: boolean;
 }
 
-const CookScreen: React.FC = () => {
+export default function CookScreen() {
   const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -242,7 +241,7 @@ const CookScreen: React.FC = () => {
       />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -260,12 +259,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    fontFamily: 'Inter-Bold',
   },
   notCookText: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 30,
     lineHeight: 24,
+    fontFamily: 'Inter-Regular',
   },
   contactButton: {
     paddingHorizontal: 20,
@@ -280,11 +281,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   headerSubtitle: {
     fontSize: 16,
     color: 'white',
     opacity: 0.9,
+    fontFamily: 'Inter-Regular',
   },
   content: {
     flex: 1,
@@ -298,6 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
+    fontFamily: 'Inter-Bold',
   },
   input: {
     marginBottom: 15,
@@ -308,6 +312,7 @@ const styles = StyleSheet.create({
   mealTypeLabel: {
     fontSize: 16,
     marginBottom: 10,
+    fontFamily: 'Inter-Medium',
   },
   mealTypeButtons: {
     flexDirection: 'row',
@@ -347,22 +352,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   menuDescription: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.7,
     marginBottom: 10,
+    fontFamily: 'Inter-Regular',
   },
   menuPrice: {
     fontSize: 16,
     fontWeight: 'bold',
     color: theme.colors.primary,
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   menuQuantity: {
     fontSize: 14,
     marginBottom: 10,
+    fontFamily: 'Inter-Regular',
   },
   menuTags: {
     flexDirection: 'row',
@@ -384,5 +393,3 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
 });
-
-export default CookScreen;

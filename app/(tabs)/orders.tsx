@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Card, Chip, Button } from 'react-native-paper';
 import { format } from 'date-fns';
-import { theme } from '../theme/theme';
+import { theme } from '@/constants/theme';
 
 interface Order {
   id: string;
@@ -22,7 +22,7 @@ interface Order {
   address: string;
 }
 
-const OrdersScreen: React.FC = () => {
+export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
 
@@ -62,18 +62,18 @@ const OrdersScreen: React.FC = () => {
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'pending':
-        return theme.colors.warning;
+        return '#FF9800';
       case 'confirmed':
       case 'preparing':
         return theme.colors.primary;
       case 'ready':
         return theme.colors.secondary;
       case 'delivered':
-        return theme.colors.success;
+        return '#4CAF50';
       case 'cancelled':
-        return theme.colors.error;
+        return '#F44336';
       default:
-        return theme.colors.text;
+        return theme.colors.onSurface;
     }
   };
 
@@ -227,7 +227,7 @@ const OrdersScreen: React.FC = () => {
       </ScrollView>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -243,6 +243,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
+    fontFamily: 'Inter-Bold',
   },
   tabs: {
     flexDirection: 'row',
@@ -260,13 +261,15 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 16,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.7,
+    fontFamily: 'Inter-Regular',
   },
   activeTabText: {
     color: theme.colors.primary,
     fontWeight: 'bold',
     opacity: 1,
+    fontFamily: 'Inter-Bold',
   },
   ordersList: {
     flex: 1,
@@ -280,8 +283,9 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 18,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.6,
+    fontFamily: 'Inter-Regular',
   },
   orderCard: {
     marginBottom: 15,
@@ -301,10 +305,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   cookName: {
     fontSize: 14,
     color: theme.colors.primary,
+    fontFamily: 'Inter-Medium',
   },
   statusChip: {
     marginLeft: 10,
@@ -313,6 +319,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: 'bold',
+    fontFamily: 'Inter-Bold',
   },
   orderDetails: {
     paddingHorizontal: 15,
@@ -325,12 +332,14 @@ const styles = StyleSheet.create({
   },
   metaLabel: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.7,
+    fontFamily: 'Inter-Regular',
   },
   metaValue: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: 'Inter-Medium',
   },
   orderActions: {
     flexDirection: 'row',
@@ -344,5 +353,3 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
 });
-
-export default OrdersScreen;

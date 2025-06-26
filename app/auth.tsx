@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { TextInput, Button, Card, Switch } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme/theme';
+import { router } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { theme } from '@/constants/theme';
 
-const AuthScreen: React.FC = () => {
+export default function AuthScreen() {
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,9 @@ const AuthScreen: React.FC = () => {
         success = await register(formData);
       }
 
-      if (!success) {
+      if (success) {
+        router.replace('/(tabs)');
+      } else {
         Alert.alert('Error', isLogin ? 'Invalid credentials' : 'Registration failed');
       }
     } catch (error) {
@@ -162,7 +165,7 @@ const AuthScreen: React.FC = () => {
       </ScrollView>
     </KeyboardAvoidingView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -179,12 +182,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 10,
+    fontFamily: 'Inter-Bold',
   },
   tagline: {
     fontSize: 16,
     color: 'white',
     opacity: 0.9,
     textAlign: 'center',
+    fontFamily: 'Inter-Regular',
   },
   content: {
     flex: 1,
@@ -202,12 +207,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 10,
+    fontFamily: 'Inter-Bold',
   },
   authSubtitle: {
     fontSize: 16,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.7,
     textAlign: 'center',
+    fontFamily: 'Inter-Regular',
   },
   form: {
     width: '100%',
@@ -225,6 +232,7 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontSize: 16,
     flex: 1,
+    fontFamily: 'Inter-Regular',
   },
   submitButton: {
     paddingVertical: 8,
@@ -234,5 +242,3 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
-
-export default AuthScreen;

@@ -8,14 +8,14 @@ import {
   Alert,
 } from 'react-native';
 import { Avatar, Card, List, Switch, Button } from 'react-native-paper';
-import { useAuth } from '../context/AuthContext';
-import { useSubscription } from '../context/SubscriptionContext';
-import { theme } from '../theme/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { theme } from '@/constants/theme';
+import { router } from 'expo-router';
 
-const ProfileScreen: React.FC = () => {
+export default function ProfileScreen() {
   const { user, logout } = useAuth();
-  const { isSubscribed, customerInfo } = useSubscription();
   const [notifications, setNotifications] = useState(true);
+  const [isSubscribed] = useState(false); // Mock subscription status
 
   const handleLogout = () => {
     Alert.alert(
@@ -99,7 +99,7 @@ const ProfileScreen: React.FC = () => {
               </Text>
               <Button
                 mode="contained"
-                onPress={() => {/* Navigate to subscription */}}
+                onPress={() => router.push('/subscription')}
                 style={styles.subscribeButton}
               >
                 Subscribe Now
@@ -148,7 +148,7 @@ const ProfileScreen: React.FC = () => {
       </View>
     </ScrollView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -170,12 +170,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   userEmail: {
     fontSize: 16,
     color: 'white',
     opacity: 0.9,
     marginBottom: 10,
+    fontFamily: 'Inter-Regular',
   },
   cookBadge: {
     fontSize: 16,
@@ -184,6 +186,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 15,
+    fontFamily: 'Inter-Medium',
   },
   subscriptionCard: {
     margin: 20,
@@ -196,16 +199,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 10,
+    fontFamily: 'Inter-Bold',
   },
   subscriptionStatus: {
     fontSize: 16,
     marginBottom: 5,
+    fontFamily: 'Inter-Medium',
   },
   subscriptionDetails: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.7,
     marginBottom: 15,
+    fontFamily: 'Inter-Regular',
   },
   subscribeButton: {
     alignSelf: 'flex-start',
@@ -226,8 +232,9 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 16,
-    color: theme.colors.error,
+    color: '#F44336',
     fontWeight: 'bold',
+    fontFamily: 'Inter-Bold',
   },
   footer: {
     alignItems: 'center',
@@ -235,9 +242,8 @@ const styles = StyleSheet.create({
   },
   version: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.5,
+    fontFamily: 'Inter-Regular',
   },
 });
-
-export default ProfileScreen;

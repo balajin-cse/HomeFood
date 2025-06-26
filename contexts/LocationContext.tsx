@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 interface LocationContextType {
   location: Location.LocationObject | null;
@@ -30,10 +31,19 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
   const getCurrentLocation = async () => {
     try {
       setLoading(true);
+      
+      if (Platform.OS === 'web') {
+        // For web, use a mock location
+        setAddress('San Francisco, CA');
+        setLoading(false);
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status !== 'granted') {
         console.log('Permission to access location was denied');
+        setAddress('Location not available');
         return;
       }
 
@@ -53,6 +63,7 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
       }
     } catch (error) {
       console.error('Error getting location:', error);
+      setAddress('Location not available');
     } finally {
       setLoading(false);
     }

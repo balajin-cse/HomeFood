@@ -9,10 +9,10 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Searchbar, Card, Chip, FAB } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { useLocation } from '../context/LocationContext';
-import { useSubscription } from '../context/SubscriptionContext';
-import { theme } from '../theme/theme';
+import { router } from 'expo-router';
+import { useLocation } from '@/contexts/LocationContext';
+import { theme } from '@/constants/theme';
+import { Crown } from 'lucide-react-native';
 
 interface FoodItem {
   id: string;
@@ -28,14 +28,13 @@ interface FoodItem {
   tags: string[];
 }
 
-const HomeScreen: React.FC = () => {
-  const navigation = useNavigation();
+export default function HomeScreen() {
   const { address } = useLocation();
-  const { isSubscribed } = useSubscription();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealType, setSelectedMealType] = useState<string>('all');
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isSubscribed] = useState(false); // Mock subscription status
 
   useEffect(() => {
     loadFoodItems();
@@ -49,7 +48,7 @@ const HomeScreen: React.FC = () => {
         title: 'Homemade Pasta Carbonara',
         description: 'Creamy pasta with bacon and parmesan cheese',
         price: 12.99,
-        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg',
+        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
         cookName: 'Maria Rodriguez',
         cookRating: 4.8,
         distance: 2.3,
@@ -62,7 +61,7 @@ const HomeScreen: React.FC = () => {
         title: 'Fresh Avocado Toast',
         description: 'Multigrain bread with fresh avocado and herbs',
         price: 8.50,
-        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg',
+        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=400',
         cookName: 'Sarah Johnson',
         cookRating: 4.6,
         distance: 1.8,
@@ -75,7 +74,7 @@ const HomeScreen: React.FC = () => {
         title: 'Grilled Salmon with Vegetables',
         description: 'Fresh salmon with seasonal grilled vegetables',
         price: 18.99,
-        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg',
+        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=400',
         cookName: 'David Chen',
         cookRating: 4.9,
         distance: 3.1,
@@ -103,10 +102,13 @@ const HomeScreen: React.FC = () => {
 
   const handleFoodItemPress = (item: FoodItem) => {
     if (!isSubscribed) {
-      navigation.navigate('Subscription' as never);
+      router.push('/subscription');
       return;
     }
-    navigation.navigate('FoodDetail' as never, { foodItem: item } as never);
+    router.push({
+      pathname: '/food-detail',
+      params: { foodItem: JSON.stringify(item) }
+    });
   };
 
   return (
@@ -180,14 +182,14 @@ const HomeScreen: React.FC = () => {
       {!isSubscribed && (
         <FAB
           style={styles.fab}
-          icon="crown"
+          icon={() => <Crown color="white" size={20} />}
           label="Subscribe"
-          onPress={() => navigation.navigate('Subscription' as never)}
+          onPress={() => router.push('/subscription')}
         />
       )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -204,11 +206,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   location: {
     fontSize: 16,
     color: 'white',
     opacity: 0.9,
+    fontFamily: 'Inter-Regular',
   },
   searchBar: {
     margin: 20,
@@ -223,6 +227,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
+    fontFamily: 'Inter-Medium',
   },
   foodList: {
     flex: 1,
@@ -249,17 +254,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 5,
+    fontFamily: 'Inter-Bold',
   },
   foodDescription: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.7,
     marginBottom: 5,
+    fontFamily: 'Inter-Regular',
   },
   cookName: {
     fontSize: 14,
     color: theme.colors.primary,
     marginBottom: 10,
+    fontFamily: 'Inter-Medium',
   },
   foodMeta: {
     flexDirection: 'row',
@@ -271,11 +279,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.primary,
+    fontFamily: 'Inter-Bold',
   },
   distance: {
     fontSize: 14,
-    color: theme.colors.text,
+    color: theme.colors.onSurface,
     opacity: 0.6,
+    fontFamily: 'Inter-Regular',
   },
   tags: {
     flexDirection: 'row',
@@ -293,5 +303,3 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.secondary,
   },
 });
-
-export default HomeScreen;
