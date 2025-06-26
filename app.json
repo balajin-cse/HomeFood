@@ -27,12 +27,10 @@
     },
     "web": {
       "favicon": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop",
-      "output": "server"
+      "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      "expo-location",
-      "expo-notifications"
+      "expo-router"
     ],
     "scheme": "homefood"
   }
