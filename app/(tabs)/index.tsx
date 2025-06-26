@@ -12,12 +12,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation } from 'lucide-react-native';
+import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { FoodCard } from '@/components/FoodCard';
+import { MapSelector } from '@/components/MapSelector';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -57,7 +58,7 @@ const MEAL_TYPES = [
 ];
 
 export default function HomeScreen() {
-  const { address, refreshLocation } = useLocation();
+  const { address, updateLocation } = useLocation();
   const { user } = useAuth();
   const { isSubscribed } = useSubscription();
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +66,7 @@ export default function HomeScreen() {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showMapSelector, setShowMapSelector] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<SavedAddress | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([
     {
@@ -461,30 +463,24 @@ export default function HomeScreen() {
 
   const handleAddressSelect = (address: SavedAddress) => {
     setSelectedAddress(address);
+    if (address.coordinates) {
+      updateLocation(address.coordinates, address.address);
+    }
     setShowAddressModal(false);
   };
 
-  const handleUseCurrentLocation = async () => {
-    await refreshLocation();
-    setShowAddressModal(false);
-  };
-
-  const handleOpenMapSelector = () => {
-    // In a real app, this would open Google Maps or a map picker
-    // For now, we'll show a placeholder
-    console.log('Opening Google Maps location picker...');
-    setShowAddressModal(false);
+  const handleMapLocationSelect = (location: { latitude: number; longitude: number; address: string }) => {
+    const newAddress: SavedAddress = {
+      id: Date.now().toString(),
+      label: 'Selected Location',
+      address: location.address,
+      coordinates: { latitude: location.latitude, longitude: location.longitude }
+    };
     
-    // Simulate map selection
-    setTimeout(() => {
-      const newAddress: SavedAddress = {
-        id: Date.now().toString(),
-        label: 'Selected Location',
-        address: 'Custom location from map',
-        coordinates: { latitude: 37.7849, longitude: -122.4094 }
-      };
-      setSelectedAddress(newAddress);
-    }, 1000);
+    setSelectedAddress(newAddress);
+    updateLocation({ latitude: location.latitude, longitude: location.longitude }, location.address);
+    setShowMapSelector(false);
+    setShowAddressModal(false);
   };
 
   const getGreeting = () => {
@@ -638,7 +634,7 @@ export default function HomeScreen() {
               onPress={() => setShowAddressModal(false)}
               style={styles.modalCloseButton}
             >
-              <Text style={styles.modalCloseText}>Done</Text>
+              <X size={24} color={theme.colors.onSurface} />
             </TouchableOpacity>
           </View>
 
@@ -646,7 +642,13 @@ export default function HomeScreen() {
             {/* Current Location Option */}
             <TouchableOpacity 
               style={styles.addressOption}
-              onPress={handleUseCurrentLocation}
+              onPress={() => {
+                updateLocation(
+                  { latitude: 37.7749, longitude: -122.4194 },
+                  address || 'Current Location'
+                );
+                setShowAddressModal(false);
+              }}
             >
               <View style={styles.addressOptionContent}>
                 <Navigation size={20} color={theme.colors.primary} />
@@ -679,9 +681,9 @@ export default function HomeScreen() {
               </View>
               
               <Button
-                title="Open Google Maps Selector"
+                title="Open Map Selector"
                 variant="outline"
-                onPress={handleOpenMapSelector}
+                onPress={() => setShowMapSelector(true)}
                 style={styles.mapButton}
               />
             </Card>
@@ -725,6 +727,20 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </ScrollView>
         </View>
+      </Modal>
+
+      {/* Map Selector Modal */}
+      <Modal
+        visible={showMapSelector}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowMapSelector(false)}
+      >
+        <MapSelector
+          onLocationSelect={handleMapLocationSelect}
+          onClose={() => setShowMapSelector(false)}
+          initialLocation={selectedAddress?.coordinates}
+        />
       </Modal>
     </View>
   );
@@ -934,13 +950,12 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
   },
   modalCloseButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  modalCloseText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalContent: {
     flex: 1,
