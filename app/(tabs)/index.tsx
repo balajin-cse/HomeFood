@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check } from 'lucide-react-native';
+import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -23,7 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface FoodItem {
   id: string;
@@ -469,6 +469,24 @@ export default function HomeScreen() {
     setShowAddressModal(false);
   };
 
+  const handleOpenMapSelector = () => {
+    // In a real app, this would open Google Maps or a map picker
+    // For now, we'll show a placeholder
+    console.log('Opening Google Maps location picker...');
+    setShowAddressModal(false);
+    
+    // Simulate map selection
+    setTimeout(() => {
+      const newAddress: SavedAddress = {
+        id: Date.now().toString(),
+        label: 'Selected Location',
+        address: 'Custom location from map',
+        coordinates: { latitude: 37.7849, longitude: -122.4094 }
+      };
+      setSelectedAddress(newAddress);
+    }, 1000);
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -489,30 +507,32 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         stickyHeaderIndices={[0]}
       >
-        {/* Header */}
-        <LinearGradient
-          colors={[theme.colors.primary, theme.colors.primaryDark]}
-          style={[styles.header, { width: screenWidth }]}
-        >
-          <View style={styles.headerContent}>
-            <View style={styles.greetingSection}>
-              <Text style={styles.greeting}>{getGreeting()}!</Text>
-              <Text style={styles.userName}>{user?.name || 'Food Lover'}</Text>
+        {/* Header - Fixed Width */}
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={[theme.colors.primary, theme.colors.primaryDark]}
+            style={styles.header}
+          >
+            <View style={styles.headerContent}>
+              <View style={styles.greetingSection}>
+                <Text style={styles.greeting}>{getGreeting()}!</Text>
+                <Text style={styles.userName}>{user?.name || 'Food Lover'}</Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.locationSection}
+                onPress={() => setShowAddressModal(true)}
+                activeOpacity={0.7}
+              >
+                <MapPin size={16} color="white" />
+                <Text style={styles.location} numberOfLines={1}>
+                  {displayAddress}
+                </Text>
+                <ChevronDown size={16} color="white" />
+              </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.locationSection}
-              onPress={() => setShowAddressModal(true)}
-              activeOpacity={0.7}
-            >
-              <MapPin size={16} color="white" />
-              <Text style={styles.location} numberOfLines={1}>
-                {displayAddress}
-              </Text>
-              <ChevronDown size={16} color="white" />
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
+        </View>
 
         {/* Search Section */}
         <View style={styles.searchSection}>
@@ -629,7 +649,7 @@ export default function HomeScreen() {
               onPress={handleUseCurrentLocation}
             >
               <View style={styles.addressOptionContent}>
-                <MapPin size={20} color={theme.colors.primary} />
+                <Navigation size={20} color={theme.colors.primary} />
                 <View style={styles.addressInfo}>
                   <Text style={styles.addressLabel}>Use Current Location</Text>
                   <Text style={styles.addressText}>
@@ -638,6 +658,33 @@ export default function HomeScreen() {
                 </View>
               </View>
             </TouchableOpacity>
+
+            {/* Google Maps Integration */}
+            <Card style={styles.mapCard}>
+              <View style={styles.mapHeader}>
+                <MapPin size={24} color={theme.colors.primary} />
+                <Text style={styles.mapTitle}>Select on Map</Text>
+              </View>
+              
+              <View style={styles.mapPlaceholder}>
+                <View style={styles.mapPreview}>
+                  <Text style={styles.mapPreviewText}>🗺️</Text>
+                  <Text style={styles.mapPlaceholderText}>
+                    Interactive Google Maps
+                  </Text>
+                  <Text style={styles.mapPlaceholderSubtext}>
+                    Tap anywhere on the map to set your delivery location
+                  </Text>
+                </View>
+              </View>
+              
+              <Button
+                title="Open Google Maps Selector"
+                variant="outline"
+                onPress={handleOpenMapSelector}
+                style={styles.mapButton}
+              />
+            </Card>
 
             {/* Saved Addresses */}
             <View style={styles.savedAddressesSection}>
@@ -676,29 +723,6 @@ export default function HomeScreen() {
               <Plus size={20} color={theme.colors.primary} />
               <Text style={styles.addAddressText}>Add New Address</Text>
             </TouchableOpacity>
-
-            {/* Map Integration Placeholder */}
-            <Card style={styles.mapCard}>
-              <Text style={styles.mapTitle}>Select on Map</Text>
-              <View style={styles.mapPlaceholder}>
-                <MapPin size={48} color={theme.colors.onSurfaceVariant} />
-                <Text style={styles.mapPlaceholderText}>
-                  Interactive map coming soon
-                </Text>
-                <Text style={styles.mapPlaceholderSubtext}>
-                  Tap anywhere on the map to set your delivery location
-                </Text>
-              </View>
-              <Button
-                title="Open Map Selector"
-                variant="outline"
-                onPress={() => {
-                  // In a real app, this would open a map picker
-                  console.log('Opening map selector...');
-                }}
-                style={styles.mapButton}
-              />
-            </Card>
           </ScrollView>
         </View>
       </Modal>
@@ -717,11 +741,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
+  headerContainer: {
+    width: screenWidth,
+    marginLeft: 0,
+    marginRight: 0,
+  },
   header: {
+    width: screenWidth,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
-    zIndex: 1,
     marginLeft: 0,
     marginRight: 0,
   },
@@ -747,16 +776,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   location: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: 'white',
-    opacity: 0.9,
+    opacity: 0.95,
     flex: 1,
   },
   searchSection: {
@@ -946,8 +977,57 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
   },
+  mapCard: {
+    marginBottom: theme.spacing.xl,
+    alignItems: 'center',
+  },
+  mapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    alignSelf: 'flex-start',
+  },
+  mapTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  mapPlaceholder: {
+    width: '100%',
+    marginBottom: theme.spacing.lg,
+  },
+  mapPreview: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderStyle: 'dashed',
+  },
+  mapPreviewText: {
+    fontSize: 48,
+    marginBottom: theme.spacing.md,
+  },
+  mapPlaceholderText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.sm,
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  mapButton: {
+    alignSelf: 'center',
+  },
   savedAddressesSection: {
-    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   sectionTitle: {
     fontSize: 16,
@@ -960,7 +1040,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: theme.spacing.lg,
-    marginTop: theme.spacing.lg,
     borderRadius: theme.borderRadius.md,
     borderWidth: 2,
     borderColor: theme.colors.primary,
@@ -972,40 +1051,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: theme.colors.primary,
-  },
-  mapCard: {
-    marginTop: theme.spacing.xl,
-    alignItems: 'center',
-  },
-  mapTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.lg,
-  },
-  mapPlaceholder: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xxl,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-    width: '100%',
-    marginBottom: theme.spacing.lg,
-  },
-  mapPlaceholderText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurfaceVariant,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  mapPlaceholderSubtext: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  mapButton: {
-    alignSelf: 'center',
   },
 });
