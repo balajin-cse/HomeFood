@@ -6,11 +6,15 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
   Alert,
 } from 'react-native';
-import { TextInput, Button, Card, Switch } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { ChefHat, Mail, Lock, User, Phone, ArrowLeft } from 'lucide-react-native';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 
@@ -68,100 +72,134 @@ export default function AuthScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {/* Header */}
       <LinearGradient
-        colors={[theme.colors.primary, theme.colors.secondary]}
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
         style={styles.header}
       >
-        <Text style={styles.logo}>HomeFood</Text>
-        <Text style={styles.tagline}>Homemade meals from local cooks</Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft size={24} color="white" />
+        </TouchableOpacity>
+        
+        <View style={styles.headerContent}>
+          <View style={styles.logoContainer}>
+            <ChefHat size={48} color="white" />
+            <Text style={styles.logo}>HomeFood</Text>
+          </View>
+          <Text style={styles.tagline}>
+            Discover amazing homemade meals from local cooks in your neighborhood
+          </Text>
+        </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content}>
-        <Card style={styles.authCard}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Card style={styles.authCard} variant="elevated">
           <View style={styles.authHeader}>
             <Text style={styles.authTitle}>
-              {isLogin ? 'Welcome Back' : 'Join HomeFood'}
+              {isLogin ? 'Welcome Back!' : 'Join Our Community'}
             </Text>
             <Text style={styles.authSubtitle}>
               {isLogin 
-                ? 'Sign in to order delicious homemade meals'
-                : 'Create an account to get started'
+                ? 'Sign in to discover delicious homemade meals'
+                : 'Create your account and start your culinary journey'
               }
             </Text>
           </View>
 
           <View style={styles.form}>
-            <TextInput
-              label="Email"
+            <Input
+              label="Email Address"
+              placeholder="Enter your email"
               value={formData.email}
               onChangeText={(text) => updateFormData('email', text)}
-              mode="outlined"
               keyboardType="email-address"
               autoCapitalize="none"
-              style={styles.input}
+              autoComplete="email"
             />
 
-            <TextInput
+            <Input
               label="Password"
+              placeholder="Enter your password"
               value={formData.password}
               onChangeText={(text) => updateFormData('password', text)}
-              mode="outlined"
               secureTextEntry
-              style={styles.input}
+              autoComplete="password"
             />
 
             {!isLogin && (
               <>
-                <TextInput
+                <Input
                   label="Full Name"
+                  placeholder="Enter your full name"
                   value={formData.name}
                   onChangeText={(text) => updateFormData('name', text)}
-                  mode="outlined"
-                  style={styles.input}
+                  autoComplete="name"
                 />
 
-                <TextInput
+                <Input
                   label="Phone Number"
+                  placeholder="Enter your phone number"
                   value={formData.phone}
                   onChangeText={(text) => updateFormData('phone', text)}
-                  mode="outlined"
                   keyboardType="phone-pad"
-                  style={styles.input}
+                  autoComplete="tel"
                 />
 
-                <View style={styles.switchContainer}>
-                  <Text style={styles.switchLabel}>I want to cook and sell food</Text>
-                  <Switch
-                    value={formData.isCook}
-                    onValueChange={(value) => updateFormData('isCook', value)}
-                    color={theme.colors.primary}
-                  />
-                </View>
+                <TouchableOpacity
+                  style={styles.cookToggle}
+                  onPress={() => updateFormData('isCook', !formData.isCook)}
+                >
+                  <View style={styles.cookToggleContent}>
+                    <ChefHat size={20} color={theme.colors.primary} />
+                    <View style={styles.cookToggleText}>
+                      <Text style={styles.cookToggleTitle}>Become a Home Cook</Text>
+                      <Text style={styles.cookToggleSubtitle}>
+                        Share your culinary skills and earn money
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[
+                    styles.checkbox,
+                    formData.isCook && styles.checkboxActive
+                  ]}>
+                    {formData.isCook && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
               </>
             )}
 
             <Button
-              mode="contained"
+              title={isLogin ? 'Sign In' : 'Create Account'}
               onPress={handleSubmit}
-              loading={loading}
               disabled={loading}
               style={styles.submitButton}
-            >
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </Button>
+            />
 
-            <Button
-              mode="text"
+            <TouchableOpacity
               onPress={() => setIsLogin(!isLogin)}
               style={styles.switchModeButton}
             >
-              {isLogin 
-                ? "Don't have an account? Sign up"
-                : "Already have an account? Sign in"
-              }
-            </Button>
+              <Text style={styles.switchModeText}>
+                {isLogin 
+                  ? "Don't have an account? " 
+                  : "Already have an account? "
+                }
+                <Text style={styles.switchModeLink}>
+                  {isLogin ? 'Sign up' : 'Sign in'}
+                </Text>
+              </Text>
+            </TouchableOpacity>
           </View>
         </Card>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -173,72 +211,137 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 40,
-    paddingTop: 80,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  headerContent: {
     alignItems: 'center',
   },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
   logo: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 10,
+    fontSize: 32,
     fontFamily: 'Inter-Bold',
+    color: 'white',
+    marginTop: theme.spacing.md,
   },
   tagline: {
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: 'white',
     opacity: 0.9,
     textAlign: 'center',
-    fontFamily: 'Inter-Regular',
+    lineHeight: 24,
   },
   content: {
     flex: 1,
-    padding: 20,
+    marginTop: -theme.spacing.lg,
   },
   authCard: {
-    padding: 30,
-    elevation: 5,
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
   },
   authHeader: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: theme.spacing.xl,
   },
   authTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
     fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.sm,
   },
   authSubtitle: {
     fontSize: 16,
-    color: theme.colors.onSurface,
-    opacity: 0.7,
-    textAlign: 'center',
     fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   form: {
-    width: '100%',
+    gap: theme.spacing.lg,
   },
-  input: {
-    marginBottom: 15,
+  cookToggle: {
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
   },
-  switchContainer: {
+  cookToggleContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 25,
-    paddingVertical: 10,
-  },
-  switchLabel: {
-    fontSize: 16,
+    gap: theme.spacing.md,
     flex: 1,
+  },
+  cookToggleText: {
+    flex: 1,
+  },
+  cookToggleTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.xs,
+  },
+  cookToggleSubtitle: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.outline,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
   },
   submitButton: {
-    paddingVertical: 8,
-    marginBottom: 15,
+    marginTop: theme.spacing.md,
   },
   switchModeButton: {
-    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  switchModeText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  switchModeLink: {
+    color: theme.colors.primary,
+    fontFamily: 'Inter-Medium',
+  },
+  footer: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  footerText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

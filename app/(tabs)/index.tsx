@@ -4,15 +4,20 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
-  Image,
   RefreshControl,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
-import { Searchbar, Card, Chip, FAB } from 'react-native-paper';
 import { router } from 'expo-router';
+import { Search, MapPin, Filter, Crown } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { FoodCard } from '@/components/FoodCard';
 import { useLocation } from '@/contexts/LocationContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
-import { Crown } from 'lucide-react-native';
 
 interface FoodItem {
   id: string;
@@ -23,15 +28,23 @@ interface FoodItem {
   cookName: string;
   cookRating: number;
   distance: number;
+  prepTime: number;
   mealType: 'breakfast' | 'lunch' | 'dinner';
-  availableQuantity: number;
   tags: string[];
 }
 
+const MEAL_TYPES = [
+  { id: 'all', label: 'All', emoji: '🍽️' },
+  { id: 'breakfast', label: 'Breakfast', emoji: '🥐' },
+  { id: 'lunch', label: 'Lunch', emoji: '🥗' },
+  { id: 'dinner', label: 'Dinner', emoji: '🍽️' },
+];
+
 export default function HomeScreen() {
   const { address } = useLocation();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMealType, setSelectedMealType] = useState<string>('all');
+  const [selectedMealType, setSelectedMealType] = useState('all');
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isSubscribed] = useState(false); // Mock subscription status
@@ -41,46 +54,72 @@ export default function HomeScreen() {
   }, []);
 
   const loadFoodItems = async () => {
-    // Mock data - replace with actual API call
+    // Mock data with beautiful food images from Pexels
     const mockFoodItems: FoodItem[] = [
       {
         id: '1',
         title: 'Homemade Pasta Carbonara',
-        description: 'Creamy pasta with bacon and parmesan cheese',
-        price: 12.99,
-        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
+        description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese',
+        price: 16.99,
+        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'Maria Rodriguez',
-        cookRating: 4.8,
-        distance: 2.3,
+        cookRating: 4.9,
+        distance: 1.2,
+        prepTime: 25,
         mealType: 'lunch',
-        availableQuantity: 5,
-        tags: ['Italian', 'Pasta', 'Creamy'],
+        tags: ['Italian', 'Pasta', 'Creamy', 'Comfort Food'],
       },
       {
         id: '2',
-        title: 'Fresh Avocado Toast',
-        description: 'Multigrain bread with fresh avocado and herbs',
-        price: 8.50,
-        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=400',
+        title: 'Artisan Avocado Toast',
+        description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, and microgreens',
+        price: 12.50,
+        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'Sarah Johnson',
-        cookRating: 4.6,
-        distance: 1.8,
+        cookRating: 4.7,
+        distance: 0.8,
+        prepTime: 15,
         mealType: 'breakfast',
-        availableQuantity: 8,
-        tags: ['Healthy', 'Vegetarian', 'Fresh'],
+        tags: ['Healthy', 'Vegetarian', 'Fresh', 'Organic'],
       },
       {
         id: '3',
-        title: 'Grilled Salmon with Vegetables',
-        description: 'Fresh salmon with seasonal grilled vegetables',
-        price: 18.99,
-        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=400',
+        title: 'Pan-Seared Salmon',
+        description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce',
+        price: 24.99,
+        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookName: 'David Chen',
-        cookRating: 4.9,
-        distance: 3.1,
+        cookRating: 4.8,
+        distance: 2.1,
+        prepTime: 35,
         mealType: 'dinner',
-        availableQuantity: 3,
-        tags: ['Healthy', 'Seafood', 'Grilled'],
+        tags: ['Seafood', 'Healthy', 'Gourmet', 'Protein Rich'],
+      },
+      {
+        id: '4',
+        title: 'Authentic Ramen Bowl',
+        description: 'Rich tonkotsu broth with handmade noodles, chashu pork, and soft-boiled egg',
+        price: 18.99,
+        image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Kenji Tanaka',
+        cookRating: 4.9,
+        distance: 1.5,
+        prepTime: 45,
+        mealType: 'lunch',
+        tags: ['Japanese', 'Ramen', 'Comfort Food', 'Authentic'],
+      },
+      {
+        id: '5',
+        title: 'Mediterranean Bowl',
+        description: 'Quinoa bowl with grilled chicken, hummus, olives, and fresh vegetables',
+        price: 15.99,
+        image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookName: 'Elena Papadopoulos',
+        cookRating: 4.6,
+        distance: 1.8,
+        prepTime: 20,
+        mealType: 'lunch',
+        tags: ['Mediterranean', 'Healthy', 'Protein', 'Fresh'],
       },
     ];
     setFoodItems(mockFoodItems);
@@ -95,98 +134,150 @@ export default function HomeScreen() {
   const filteredFoodItems = foodItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.cookName.toLowerCase().includes(searchQuery.toLowerCase());
+                         item.cookName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesMealType = selectedMealType === 'all' || item.mealType === selectedMealType;
     return matchesSearch && matchesMealType;
   });
 
   const handleFoodItemPress = (item: FoodItem) => {
+    if (!user) {
+      router.push('/auth');
+      return;
+    }
+    
     if (!isSubscribed) {
       router.push('/subscription');
       return;
     }
+    
     router.push({
       pathname: '/food-detail',
       params: { foodItem: JSON.stringify(item) }
     });
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Good Morning!</Text>
-        <Text style={styles.location}>{address || 'Loading location...'}</Text>
+      {/* Header */}
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.greetingSection}>
+            <Text style={styles.greeting}>{getGreeting()}!</Text>
+            <Text style={styles.userName}>{user?.name || 'Food Lover'}</Text>
+          </View>
+          
+          <View style={styles.locationSection}>
+            <MapPin size={16} color="white" />
+            <Text style={styles.location} numberOfLines={1}>
+              {address || 'Getting your location...'}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Search size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
+          <Input
+            placeholder="Search for delicious homemade food..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+          />
+        </View>
+        <TouchableOpacity style={styles.filterButton}>
+          <Filter size={20} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
 
-      <Searchbar
-        placeholder="Search for homemade food..."
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-      />
-
+      {/* Meal Type Filter */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.mealTypeContainer}
+        contentContainerStyle={styles.mealTypeContent}
       >
-        {['all', 'breakfast', 'lunch', 'dinner'].map((mealType) => (
-          <Chip
-            key={mealType}
-            selected={selectedMealType === mealType}
-            onPress={() => setSelectedMealType(mealType)}
-            style={styles.mealTypeChip}
-            textStyle={styles.chipText}
-          >
-            {mealType.charAt(0).toUpperCase() + mealType.slice(1)}
-          </Chip>
-        ))}
-      </ScrollView>
-
-      <ScrollView
-        style={styles.foodList}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {filteredFoodItems.map((item) => (
+        {MEAL_TYPES.map((mealType) => (
           <TouchableOpacity
-            key={item.id}
-            onPress={() => handleFoodItemPress(item)}
+            key={mealType.id}
+            style={[
+              styles.mealTypeChip,
+              selectedMealType === mealType.id && styles.mealTypeChipActive,
+            ]}
+            onPress={() => setSelectedMealType(mealType.id)}
           >
-            <Card style={styles.foodCard}>
-              <View style={styles.cardContent}>
-                <Image source={{ uri: item.image }} style={styles.foodImage} />
-                <View style={styles.foodInfo}>
-                  <Text style={styles.foodTitle}>{item.title}</Text>
-                  <Text style={styles.foodDescription}>{item.description}</Text>
-                  <Text style={styles.cookName}>by {item.cookName}</Text>
-                  <View style={styles.foodMeta}>
-                    <Text style={styles.price}>${item.price}</Text>
-                    <Text style={styles.distance}>{item.distance}km away</Text>
-                  </View>
-                  <View style={styles.tags}>
-                    {item.tags.slice(0, 2).map((tag) => (
-                      <Chip key={tag} compact style={styles.tag}>
-                        {tag}
-                      </Chip>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            </Card>
+            <Text style={styles.mealTypeEmoji}>{mealType.emoji}</Text>
+            <Text
+              style={[
+                styles.mealTypeText,
+                selectedMealType === mealType.id && styles.mealTypeTextActive,
+              ]}
+            >
+              {mealType.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
+      {/* Premium Banner */}
       {!isSubscribed && (
-        <FAB
-          style={styles.fab}
-          icon={() => <Crown color="white" size={20} />}
-          label="Subscribe"
-          onPress={() => router.push('/subscription')}
-        />
+        <TouchableOpacity onPress={() => router.push('/subscription')}>
+          <Card style={styles.premiumBanner}>
+            <LinearGradient
+              colors={[theme.colors.secondary, theme.colors.primary]}
+              style={styles.premiumGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Crown size={24} color="white" />
+              <View style={styles.premiumText}>
+                <Text style={styles.premiumTitle}>Unlock Premium</Text>
+                <Text style={styles.premiumSubtitle}>Order from amazing home cooks</Text>
+              </View>
+              <Text style={styles.premiumCta}>Subscribe →</Text>
+            </LinearGradient>
+          </Card>
+        </TouchableOpacity>
       )}
+
+      {/* Food List */}
+      <ScrollView
+        style={styles.foodList}
+        contentContainerStyle={styles.foodListContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {filteredFoodItems.length === 0 ? (
+          <Card style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No dishes found</Text>
+            <Text style={styles.emptyStateText}>
+              Try adjusting your search or meal type filter
+            </Text>
+          </Card>
+        ) : (
+          filteredFoodItems.map((item) => (
+            <FoodCard
+              key={item.id}
+              item={item}
+              onPress={() => handleFoodItemPress(item)}
+            />
+          ))
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -197,109 +288,159 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
   },
   header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: theme.colors.primary,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  headerContent: {
+    gap: theme.spacing.md,
+  },
+  greetingSection: {
+    gap: theme.spacing.xs,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
-    fontFamily: 'Inter-Bold',
-  },
-  location: {
     fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: 'white',
     opacity: 0.9,
-    fontFamily: 'Inter-Regular',
   },
-  searchBar: {
-    margin: 20,
-    elevation: 4,
+  userName: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
   },
-  mealTypeContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+  locationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
   },
-  mealTypeChip: {
-    marginRight: 10,
-  },
-  chipText: {
+  location: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
+    color: 'white',
+    opacity: 0.9,
+    flex: 1,
+  },
+  searchSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  searchContainer: {
+    flex: 1,
+    position: 'relative',
+  },
+  searchIcon: {
+    position: 'absolute',
+    left: theme.spacing.md,
+    top: '50%',
+    marginTop: -10,
+    zIndex: 1,
+  },
+  searchInput: {
+    paddingLeft: 48,
+    marginBottom: 0,
+  },
+  filterButton: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: theme.colors.shadow.light,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  mealTypeContainer: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  mealTypeContent: {
+    gap: theme.spacing.md,
+  },
+  mealTypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.xl,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    gap: theme.spacing.sm,
+  },
+  mealTypeChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  mealTypeEmoji: {
+    fontSize: 16,
+  },
+  mealTypeText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  mealTypeTextActive: {
+    color: 'white',
+  },
+  premiumBanner: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    padding: 0,
+    overflow: 'hidden',
+  },
+  premiumGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  premiumText: {
+    flex: 1,
+  },
+  premiumTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+  },
+  premiumSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: 'white',
+    opacity: 0.9,
+  },
+  premiumCta: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
   },
   foodList: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  foodCard: {
-    marginBottom: 15,
-    elevation: 3,
+  foodListContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
   },
-  cardContent: {
-    flexDirection: 'row',
-    padding: 15,
-  },
-  foodImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 15,
-  },
-  foodInfo: {
-    flex: 1,
-  },
-  foodTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    fontFamily: 'Inter-Bold',
-  },
-  foodDescription: {
-    fontSize: 14,
-    color: theme.colors.onSurface,
-    opacity: 0.7,
-    marginBottom: 5,
-    fontFamily: 'Inter-Regular',
-  },
-  cookName: {
-    fontSize: 14,
-    color: theme.colors.primary,
-    marginBottom: 10,
-    fontFamily: 'Inter-Medium',
-  },
-  foodMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptyState: {
     alignItems: 'center',
-    marginBottom: 10,
+    paddingVertical: theme.spacing.xxl,
   },
-  price: {
+  emptyStateTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.primary,
     fontFamily: 'Inter-Bold',
-  },
-  distance: {
-    fontSize: 14,
     color: theme.colors.onSurface,
-    opacity: 0.6,
+    marginBottom: theme.spacing.sm,
+  },
+  emptyStateText: {
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
-  },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  tag: {
-    marginRight: 5,
-    marginBottom: 5,
-  },
-  fab: {
-    position: 'absolute',
-    margin: 16,
-    right: 0,
-    bottom: 0,
-    backgroundColor: theme.colors.secondary,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
   },
 });
