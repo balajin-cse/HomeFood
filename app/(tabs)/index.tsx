@@ -8,17 +8,22 @@ import {
   TouchableOpacity,
   Platform,
   Image,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Search, MapPin, Filter, Crown } from 'lucide-react-native';
+import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { FoodCard } from '@/components/FoodCard';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface FoodItem {
   id: string;
@@ -34,6 +39,16 @@ interface FoodItem {
   tags: string[];
 }
 
+interface SavedAddress {
+  id: string;
+  label: string;
+  address: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
 const MEAL_TYPES = [
   { id: 'all', label: 'All', emoji: '🍽️' },
   { id: 'breakfast', label: 'Breakfast', emoji: '🥐' },
@@ -42,16 +57,42 @@ const MEAL_TYPES = [
 ];
 
 export default function HomeScreen() {
-  const { address } = useLocation();
+  const { address, refreshLocation } = useLocation();
   const { user } = useAuth();
   const { isSubscribed } = useSubscription();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('all');
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<SavedAddress | null>(null);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([
+    {
+      id: '1',
+      label: 'Home',
+      address: 'San Francisco, CA',
+      coordinates: { latitude: 37.7749, longitude: -122.4194 }
+    },
+    {
+      id: '2',
+      label: 'Work',
+      address: 'Palo Alto, CA',
+      coordinates: { latitude: 37.4419, longitude: -122.1430 }
+    },
+    {
+      id: '3',
+      label: 'Friend\'s Place',
+      address: 'Berkeley, CA',
+      coordinates: { latitude: 37.8715, longitude: -122.2730 }
+    }
+  ]);
 
   useEffect(() => {
     loadFoodItems();
+    // Set default address if none selected
+    if (!selectedAddress && savedAddresses.length > 0) {
+      setSelectedAddress(savedAddresses[0]);
+    }
   }, []);
 
   const loadFoodItems = async () => {
@@ -418,12 +459,24 @@ export default function HomeScreen() {
     });
   };
 
+  const handleAddressSelect = (address: SavedAddress) => {
+    setSelectedAddress(address);
+    setShowAddressModal(false);
+  };
+
+  const handleUseCurrentLocation = async () => {
+    await refreshLocation();
+    setShowAddressModal(false);
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
   };
+
+  const displayAddress = selectedAddress?.address || address || 'Getting your location...';
 
   return (
     <View style={styles.container}>
@@ -439,7 +492,7 @@ export default function HomeScreen() {
         {/* Header */}
         <LinearGradient
           colors={[theme.colors.primary, theme.colors.primaryDark]}
-          style={styles.header}
+          style={[styles.header, { width: screenWidth }]}
         >
           <View style={styles.headerContent}>
             <View style={styles.greetingSection}>
@@ -447,12 +500,17 @@ export default function HomeScreen() {
               <Text style={styles.userName}>{user?.name || 'Food Lover'}</Text>
             </View>
             
-            <View style={styles.locationSection}>
+            <TouchableOpacity 
+              style={styles.locationSection}
+              onPress={() => setShowAddressModal(true)}
+              activeOpacity={0.7}
+            >
               <MapPin size={16} color="white" />
               <Text style={styles.location} numberOfLines={1}>
-                {address || 'Getting your location...'}
+                {displayAddress}
               </Text>
-            </View>
+              <ChevronDown size={16} color="white" />
+            </TouchableOpacity>
           </View>
         </LinearGradient>
 
@@ -545,6 +603,105 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Address Selection Modal */}
+      <Modal
+        visible={showAddressModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select Delivery Address</Text>
+            <TouchableOpacity 
+              onPress={() => setShowAddressModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Text style={styles.modalCloseText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {/* Current Location Option */}
+            <TouchableOpacity 
+              style={styles.addressOption}
+              onPress={handleUseCurrentLocation}
+            >
+              <View style={styles.addressOptionContent}>
+                <MapPin size={20} color={theme.colors.primary} />
+                <View style={styles.addressInfo}>
+                  <Text style={styles.addressLabel}>Use Current Location</Text>
+                  <Text style={styles.addressText}>
+                    {address || 'Detecting your location...'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Saved Addresses */}
+            <View style={styles.savedAddressesSection}>
+              <Text style={styles.sectionTitle}>Saved Addresses</Text>
+              {savedAddresses.map((addr) => (
+                <TouchableOpacity
+                  key={addr.id}
+                  style={[
+                    styles.addressOption,
+                    selectedAddress?.id === addr.id && styles.addressOptionSelected
+                  ]}
+                  onPress={() => handleAddressSelect(addr)}
+                >
+                  <View style={styles.addressOptionContent}>
+                    <MapPin size={20} color={theme.colors.primary} />
+                    <View style={styles.addressInfo}>
+                      <Text style={styles.addressLabel}>{addr.label}</Text>
+                      <Text style={styles.addressText}>{addr.address}</Text>
+                    </View>
+                    {selectedAddress?.id === addr.id && (
+                      <Check size={20} color={theme.colors.primary} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Add New Address */}
+            <TouchableOpacity 
+              style={styles.addAddressButton}
+              onPress={() => {
+                setShowAddressModal(false);
+                router.push('/delivery-address');
+              }}
+            >
+              <Plus size={20} color={theme.colors.primary} />
+              <Text style={styles.addAddressText}>Add New Address</Text>
+            </TouchableOpacity>
+
+            {/* Map Integration Placeholder */}
+            <Card style={styles.mapCard}>
+              <Text style={styles.mapTitle}>Select on Map</Text>
+              <View style={styles.mapPlaceholder}>
+                <MapPin size={48} color={theme.colors.onSurfaceVariant} />
+                <Text style={styles.mapPlaceholderText}>
+                  Interactive map coming soon
+                </Text>
+                <Text style={styles.mapPlaceholderSubtext}>
+                  Tap anywhere on the map to set your delivery location
+                </Text>
+              </View>
+              <Button
+                title="Open Map Selector"
+                variant="outline"
+                onPress={() => {
+                  // In a real app, this would open a map picker
+                  console.log('Opening map selector...');
+                }}
+                style={styles.mapButton}
+              />
+            </Card>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -565,9 +722,12 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     zIndex: 1,
+    marginLeft: 0,
+    marginRight: 0,
   },
   headerContent: {
     gap: theme.spacing.md,
+    width: '100%',
   },
   greetingSection: {
     gap: theme.spacing.xs,
@@ -587,6 +747,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
   },
   location: {
     fontSize: 14,
@@ -717,5 +881,131 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
     textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 60 : theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  modalCloseButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  modalContent: {
+    flex: 1,
+    padding: theme.spacing.lg,
+  },
+  addressOption: {
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  addressOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  addressOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  addressInfo: {
+    flex: 1,
+  },
+  addressLabel: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.xs,
+  },
+  addressText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  savedAddressesSection: {
+    marginTop: theme.spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+  },
+  addAddressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+    gap: theme.spacing.md,
+  },
+  addAddressText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  mapCard: {
+    marginTop: theme.spacing.xl,
+    alignItems: 'center',
+  },
+  mapTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.lg,
+  },
+  mapPlaceholder: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+    width: '100%',
+    marginBottom: theme.spacing.lg,
+  },
+  mapPlaceholderText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  mapButton: {
+    alignSelf: 'center',
   },
 });
