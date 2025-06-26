@@ -34,7 +34,7 @@
       [
         "react-native-purchases",
         {
-          "apiKey": "your_revenuecat_api_key_here"
+          "apiKey": "sk_nIolQZWYIazYElnPjPaepSUdFfgej"
         }
       ]
     ]
