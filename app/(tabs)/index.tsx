@@ -427,117 +427,123 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={[theme.colors.primary, theme.colors.primaryDark]}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <View style={styles.greetingSection}>
-            <Text style={styles.greeting}>{getGreeting()}!</Text>
-            <Text style={styles.userName}>{user?.name || 'Food Lover'}</Text>
-          </View>
-          
-          <View style={styles.locationSection}>
-            <MapPin size={16} color="white" />
-            <Text style={styles.location} numberOfLines={1}>
-              {address || 'Getting your location...'}
-            </Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {/* Search Section */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Search size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
-          <Input
-            placeholder="Search for delicious homemade food..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchInput}
-          />
-        </View>
-        <TouchableOpacity style={styles.filterButton}>
-          <Filter size={20} color={theme.colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Meal Type Filter */}
       <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.mealTypeContainer}
-        contentContainerStyle={styles.mealTypeContent}
-      >
-        {MEAL_TYPES.map((mealType) => (
-          <TouchableOpacity
-            key={mealType.id}
-            style={[
-              styles.mealTypeChip,
-              selectedMealType === mealType.id && styles.mealTypeChipActive,
-            ]}
-            onPress={() => setSelectedMealType(mealType.id)}
-          >
-            <Text style={styles.mealTypeEmoji}>{mealType.emoji}</Text>
-            <Text
-              style={[
-                styles.mealTypeText,
-                selectedMealType === mealType.id && styles.mealTypeTextActive,
-              ]}
-            >
-              {mealType.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Premium Banner */}
-      {!isSubscribed && (
-        <TouchableOpacity onPress={() => router.push('/subscription')}>
-          <Card style={styles.premiumBanner}>
-            <LinearGradient
-              colors={[theme.colors.secondary, theme.colors.primary]}
-              style={styles.premiumGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <Crown size={24} color="white" />
-              <View style={styles.premiumText}>
-                <Text style={styles.premiumTitle}>Unlock Premium</Text>
-                <Text style={styles.premiumSubtitle}>Order from amazing home cooks</Text>
-              </View>
-              <Text style={styles.premiumCta}>Subscribe →</Text>
-            </LinearGradient>
-          </Card>
-        </TouchableOpacity>
-      )}
-
-      {/* Food List */}
-      <ScrollView
-        style={styles.foodList}
-        contentContainerStyle={styles.foodListContent}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[0]}
       >
-        {filteredFoodItems.length === 0 ? (
-          <Card style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>No dishes found</Text>
-            <Text style={styles.emptyStateText}>
-              Try adjusting your search or meal type filter
-            </Text>
-          </Card>
-        ) : (
-          filteredFoodItems.map((item) => (
-            <FoodCard
-              key={item.id}
-              item={item}
-              onPress={() => handleFoodItemPress(item)}
+        {/* Header */}
+        <LinearGradient
+          colors={[theme.colors.primary, theme.colors.primaryDark]}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.greetingSection}>
+              <Text style={styles.greeting}>{getGreeting()}!</Text>
+              <Text style={styles.userName}>{user?.name || 'Food Lover'}</Text>
+            </View>
+            
+            <View style={styles.locationSection}>
+              <MapPin size={16} color="white" />
+              <Text style={styles.location} numberOfLines={1}>
+                {address || 'Getting your location...'}
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+
+        {/* Search Section */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchContainer}>
+            <Search size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
+            <Input
+              placeholder="Search for delicious homemade food..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
             />
-          ))
+          </View>
+          <TouchableOpacity style={styles.filterButton}>
+            <Filter size={20} color={theme.colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Meal Type Filter */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.mealTypeContainer}
+          contentContainerStyle={styles.mealTypeContent}
+        >
+          {MEAL_TYPES.map((mealType) => (
+            <TouchableOpacity
+              key={mealType.id}
+              style={[
+                styles.mealTypeChip,
+                selectedMealType === mealType.id && styles.mealTypeChipActive,
+              ]}
+              onPress={() => setSelectedMealType(mealType.id)}
+            >
+              <Text style={styles.mealTypeEmoji}>{mealType.emoji}</Text>
+              <Text
+                style={[
+                  styles.mealTypeText,
+                  selectedMealType === mealType.id && styles.mealTypeTextActive,
+                ]}
+              >
+                {mealType.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Premium Banner - Only show if not subscribed */}
+        {!isSubscribed && (
+          <TouchableOpacity 
+            onPress={() => router.push('/subscription')}
+            style={styles.premiumBannerContainer}
+          >
+            <Card style={styles.premiumBanner}>
+              <LinearGradient
+                colors={[theme.colors.secondary, theme.colors.primary]}
+                style={styles.premiumGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Crown size={24} color="white" />
+                <View style={styles.premiumText}>
+                  <Text style={styles.premiumTitle}>Unlock Premium</Text>
+                  <Text style={styles.premiumSubtitle}>Order from amazing home cooks</Text>
+                </View>
+                <Text style={styles.premiumCta}>Subscribe →</Text>
+              </LinearGradient>
+            </Card>
+          </TouchableOpacity>
         )}
+
+        {/* Food List */}
+        <View style={styles.foodListContainer}>
+          {filteredFoodItems.length === 0 ? (
+            <Card style={styles.emptyState}>
+              <Text style={styles.emptyStateTitle}>No dishes found</Text>
+              <Text style={styles.emptyStateText}>
+                Try adjusting your search or meal type filter
+              </Text>
+            </Card>
+          ) : (
+            filteredFoodItems.map((item) => (
+              <FoodCard
+                key={item.id}
+                item={item}
+                onPress={() => handleFoodItemPress(item)}
+              />
+            ))
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -548,10 +554,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   header: {
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingBottom: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
+    zIndex: 1,
   },
   headerContent: {
     gap: theme.spacing.md,
@@ -588,6 +601,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.lg,
     gap: theme.spacing.md,
+    backgroundColor: theme.colors.background,
   },
   searchContainer: {
     flex: 1,
@@ -620,6 +634,7 @@ const styles = StyleSheet.create({
   mealTypeContainer: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
   },
   mealTypeContent: {
     gap: theme.spacing.md,
@@ -650,9 +665,11 @@ const styles = StyleSheet.create({
   mealTypeTextActive: {
     color: 'white',
   },
-  premiumBanner: {
-    marginHorizontal: theme.spacing.lg,
+  premiumBannerContainer: {
+    paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
+  },
+  premiumBanner: {
     padding: 0,
     overflow: 'hidden',
   },
@@ -681,10 +698,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: 'white',
   },
-  foodList: {
-    flex: 1,
-  },
-  foodListContent: {
+  foodListContainer: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.xxl,
   },
