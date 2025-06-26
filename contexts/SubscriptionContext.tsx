@@ -38,7 +38,7 @@ export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ childr
       // For production, replace with your actual RevenueCat API key
       const apiKey = Platform.select({
         ios: 'appl_your_ios_api_key_here',
-       android: 'goog_IJZwrnhYgSIUIMKPMzcIlTHllPH',
+        android: 'goog_IJZwrnhYgSIUIMKPMzcIlTHllPH',
         amazon: 'amzn_FHldnKMIGsdYYNIuWtPUmJyFBbv',
         default: 'web_mock_key'
       });
