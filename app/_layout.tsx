@@ -6,12 +6,14 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@exp
 import * as SplashScreen from 'expo-splash-screen';
 import { theme } from '@/constants/theme';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { LocationProvider } from '@/contexts/LocationContext';
+import { LocationProvider } from '@/contexts/LocationContext'
+import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  useFrameworkReady();
   const [fontsLoaded, fontError] = useFonts({
     'Inter-Regular': Inter_400Regular,
     'Inter-Medium': Inter_500Medium,
