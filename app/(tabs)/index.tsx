@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X } from 'lucide-react-native';
+import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X, Star, Award, Clock, Users, Heart } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -26,18 +26,48 @@ import { theme } from '@/constants/theme';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+interface CookProfile {
+  id: string;
+  name: string;
+  avatar: string;
+  rating: number;
+  totalReviews: number;
+  yearsExperience: number;
+  specialties: string[];
+  totalOrders: number;
+  responseTime: string;
+  isVerified: boolean;
+  badges: string[];
+  joinedDate: string;
+  bio: string;
+  location: string;
+  distance: number;
+}
+
 interface FoodItem {
   id: string;
   title: string;
   description: string;
   price: number;
   image: string;
+  cookId: string;
   cookName: string;
   cookRating: number;
   distance: number;
   prepTime: number;
   mealType: 'breakfast' | 'lunch' | 'dinner';
   tags: string[];
+  foodRating: number;
+  totalFoodReviews: number;
+  isPopular: boolean;
+  isNew: boolean;
+  allergens: string[];
+  nutritionInfo: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
 }
 
 interface SavedAddress {
@@ -64,9 +94,12 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('all');
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [cooks, setCooks] = useState<CookProfile[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showMapSelector, setShowMapSelector] = useState(false);
+  const [showCookProfile, setShowCookProfile] = useState(false);
+  const [selectedCook, setSelectedCook] = useState<CookProfile | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<SavedAddress | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([
     {
@@ -91,14 +124,90 @@ export default function HomeScreen() {
 
   useEffect(() => {
     loadFoodItems();
+    loadCooks();
     // Set default address if none selected
     if (!selectedAddress && savedAddresses.length > 0) {
       setSelectedAddress(savedAddresses[0]);
     }
   }, []);
 
+  const loadCooks = async () => {
+    // Enhanced mock cook data with detailed profiles
+    const mockCooks: CookProfile[] = [
+      {
+        id: '1',
+        name: 'Maria Rodriguez',
+        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.9,
+        totalReviews: 247,
+        yearsExperience: 8,
+        specialties: ['Italian', 'Mediterranean', 'Pasta'],
+        totalOrders: 1250,
+        responseTime: '< 15 min',
+        isVerified: true,
+        badges: ['Top Chef', 'Fast Response', 'Customer Favorite'],
+        joinedDate: '2019-03-15',
+        bio: 'Passionate Italian chef with 8 years of experience. I learned traditional recipes from my nonna in Tuscany and love sharing authentic flavors with my community.',
+        location: 'North Beach, SF',
+        distance: 1.2,
+      },
+      {
+        id: '2',
+        name: 'Sarah Johnson',
+        avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.7,
+        totalReviews: 189,
+        yearsExperience: 5,
+        specialties: ['Healthy', 'Vegan', 'Organic'],
+        totalOrders: 890,
+        responseTime: '< 20 min',
+        isVerified: true,
+        badges: ['Healthy Choice', 'Eco-Friendly'],
+        joinedDate: '2020-07-22',
+        bio: 'Certified nutritionist and plant-based chef. I create delicious, healthy meals using locally sourced organic ingredients.',
+        location: 'Mission District, SF',
+        distance: 0.8,
+      },
+      {
+        id: '3',
+        name: 'David Chen',
+        avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.8,
+        totalReviews: 312,
+        yearsExperience: 12,
+        specialties: ['Asian Fusion', 'Seafood', 'Gourmet'],
+        totalOrders: 1580,
+        responseTime: '< 10 min',
+        isVerified: true,
+        badges: ['Master Chef', 'Premium Quality', 'Lightning Fast'],
+        joinedDate: '2018-01-10',
+        bio: 'Former Michelin-starred restaurant chef now bringing gourmet experiences to home dining. Specializing in fresh seafood and Asian fusion.',
+        location: 'Chinatown, SF',
+        distance: 2.1,
+      },
+      {
+        id: '4',
+        name: 'Kenji Tanaka',
+        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.9,
+        totalReviews: 156,
+        yearsExperience: 15,
+        specialties: ['Japanese', 'Ramen', 'Traditional'],
+        totalOrders: 720,
+        responseTime: '< 25 min',
+        isVerified: true,
+        badges: ['Authentic Master', 'Traditional Recipes'],
+        joinedDate: '2021-02-14',
+        bio: 'Third-generation ramen master from Tokyo. I bring authentic Japanese flavors and traditional techniques to every bowl.',
+        location: 'Japantown, SF',
+        distance: 1.5,
+      },
+    ];
+    setCooks(mockCooks);
+  };
+
   const loadFoodItems = async () => {
-    // Enhanced mock data with 25+ diverse home cooks and beautiful food images
+    // Enhanced mock data with detailed food ratings and cook information
     const mockFoodItems: FoodItem[] = [
       {
         id: '1',
@@ -106,12 +215,24 @@ export default function HomeScreen() {
         description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese made with love',
         price: 16.99,
         image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '1',
         cookName: 'Maria Rodriguez',
         cookRating: 4.9,
         distance: 1.2,
         prepTime: 25,
         mealType: 'lunch',
         tags: ['Italian', 'Pasta', 'Creamy', 'Comfort Food'],
+        foodRating: 4.8,
+        totalFoodReviews: 89,
+        isPopular: true,
+        isNew: false,
+        allergens: ['Eggs', 'Dairy', 'Gluten'],
+        nutritionInfo: {
+          calories: 520,
+          protein: 22,
+          carbs: 45,
+          fat: 28,
+        },
       },
       {
         id: '2',
@@ -119,12 +240,24 @@ export default function HomeScreen() {
         description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, microgreens, and hemp seeds',
         price: 12.50,
         image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '2',
         cookName: 'Sarah Johnson',
         cookRating: 4.7,
         distance: 0.8,
         prepTime: 15,
         mealType: 'breakfast',
         tags: ['Healthy', 'Vegetarian', 'Fresh', 'Organic'],
+        foodRating: 4.6,
+        totalFoodReviews: 67,
+        isPopular: false,
+        isNew: true,
+        allergens: ['Gluten'],
+        nutritionInfo: {
+          calories: 320,
+          protein: 12,
+          carbs: 35,
+          fat: 18,
+        },
       },
       {
         id: '3',
@@ -132,12 +265,24 @@ export default function HomeScreen() {
         description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
         price: 24.99,
         image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '3',
         cookName: 'David Chen',
         cookRating: 4.8,
         distance: 2.1,
         prepTime: 35,
         mealType: 'dinner',
         tags: ['Seafood', 'Healthy', 'Gourmet', 'Protein Rich'],
+        foodRating: 4.9,
+        totalFoodReviews: 124,
+        isPopular: true,
+        isNew: false,
+        allergens: ['Fish'],
+        nutritionInfo: {
+          calories: 450,
+          protein: 35,
+          carbs: 25,
+          fat: 22,
+        },
       },
       {
         id: '4',
@@ -145,285 +290,24 @@ export default function HomeScreen() {
         description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
         price: 18.99,
         image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '4',
         cookName: 'Kenji Tanaka',
         cookRating: 4.9,
         distance: 1.5,
         prepTime: 45,
         mealType: 'lunch',
         tags: ['Japanese', 'Ramen', 'Comfort Food', 'Authentic'],
-      },
-      {
-        id: '5',
-        title: 'Mediterranean Bowl',
-        description: 'Quinoa bowl with grilled chicken, hummus, olives, cucumber, and fresh herbs',
-        price: 15.99,
-        image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Elena Papadopoulos',
-        cookRating: 4.6,
-        distance: 1.8,
-        prepTime: 20,
-        mealType: 'lunch',
-        tags: ['Mediterranean', 'Healthy', 'Protein', 'Fresh'],
-      },
-      {
-        id: '6',
-        title: 'French Croissant Benedict',
-        description: 'Buttery croissant with poached eggs, hollandaise sauce, Canadian bacon, and chives',
-        price: 14.99,
-        image: 'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Pierre Dubois',
-        cookRating: 4.8,
-        distance: 2.3,
-        prepTime: 20,
-        mealType: 'breakfast',
-        tags: ['French', 'Brunch', 'Eggs', 'Gourmet'],
-      },
-      {
-        id: '7',
-        title: 'Thai Green Curry',
-        description: 'Aromatic green curry with coconut milk, Thai basil, vegetables, and jasmine rice',
-        price: 17.50,
-        image: 'https://images.pexels.com/photos/2347311/pexels-photo-2347311.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Siriporn Nakamura',
-        cookRating: 4.7,
-        distance: 1.9,
-        prepTime: 30,
-        mealType: 'dinner',
-        tags: ['Thai', 'Spicy', 'Coconut', 'Aromatic'],
-      },
-      {
-        id: '8',
-        title: 'BBQ Pulled Pork Sandwich',
-        description: 'Slow-cooked pulled pork with tangy BBQ sauce on brioche bun with coleslaw',
-        price: 13.99,
-        image: 'https://images.pexels.com/photos/1633525/pexels-photo-1633525.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Jake Williams',
-        cookRating: 4.5,
-        distance: 2.7,
-        prepTime: 15,
-        mealType: 'lunch',
-        tags: ['BBQ', 'Pork', 'Sandwich', 'Comfort Food'],
-      },
-      {
-        id: '9',
-        title: 'Vegan Buddha Bowl',
-        description: 'Colorful bowl with quinoa, roasted vegetables, tahini dressing, and mixed seeds',
-        price: 14.50,
-        image: 'https://images.pexels.com/photos/1059905/pexels-photo-1059905.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Luna Martinez',
-        cookRating: 4.6,
-        distance: 1.4,
-        prepTime: 25,
-        mealType: 'lunch',
-        tags: ['Vegan', 'Healthy', 'Colorful', 'Nutritious'],
-      },
-      {
-        id: '10',
-        title: 'Indian Butter Chicken',
-        description: 'Tender chicken in rich tomato-cream sauce with basmati rice and fresh naan bread',
-        price: 19.99,
-        image: 'https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Priya Sharma',
-        cookRating: 4.9,
-        distance: 2.0,
-        prepTime: 40,
-        mealType: 'dinner',
-        tags: ['Indian', 'Curry', 'Creamy', 'Spiced'],
-      },
-      {
-        id: '11',
-        title: 'Korean Bibimbap',
-        description: 'Mixed rice bowl with seasoned vegetables, marinated beef, fried egg, and gochujang',
-        price: 16.50,
-        image: 'https://images.pexels.com/photos/4518843/pexels-photo-4518843.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Min-jun Kim',
-        cookRating: 4.8,
-        distance: 1.7,
-        prepTime: 30,
-        mealType: 'lunch',
-        tags: ['Korean', 'Rice Bowl', 'Healthy', 'Balanced'],
-      },
-      {
-        id: '12',
-        title: 'Mexican Street Tacos',
-        description: 'Authentic corn tortillas with carnitas, onions, cilantro, and lime - 3 tacos',
-        price: 11.99,
-        image: 'https://images.pexels.com/photos/4958792/pexels-photo-4958792.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Carlos Mendoza',
-        cookRating: 4.7,
-        distance: 1.3,
-        prepTime: 20,
-        mealType: 'lunch',
-        tags: ['Mexican', 'Street Food', 'Authentic', 'Spicy'],
-      },
-      {
-        id: '13',
-        title: 'Moroccan Tagine',
-        description: 'Slow-cooked lamb with apricots, almonds, and aromatic spices, served with couscous',
-        price: 22.99,
-        image: 'https://images.pexels.com/photos/8477552/pexels-photo-8477552.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Fatima Al-Zahra',
-        cookRating: 4.9,
-        distance: 2.5,
-        prepTime: 50,
-        mealType: 'dinner',
-        tags: ['Moroccan', 'Lamb', 'Exotic', 'Aromatic'],
-      },
-      {
-        id: '14',
-        title: 'Greek Moussaka',
-        description: 'Layered eggplant casserole with ground lamb, béchamel sauce, and fresh herbs',
-        price: 18.50,
-        image: 'https://images.pexels.com/photos/5949888/pexels-photo-5949888.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Dimitri Kostas',
-        cookRating: 4.6,
-        distance: 2.2,
-        prepTime: 45,
-        mealType: 'dinner',
-        tags: ['Greek', 'Casserole', 'Traditional', 'Hearty'],
-      },
-      {
-        id: '15',
-        title: 'Vietnamese Pho',
-        description: 'Traditional beef pho with rice noodles, herbs, bean sprouts, and aromatic broth',
-        price: 15.99,
-        image: 'https://images.pexels.com/photos/4518843/pexels-photo-4518843.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Linh Nguyen',
-        cookRating: 4.8,
-        distance: 1.6,
-        prepTime: 35,
-        mealType: 'lunch',
-        tags: ['Vietnamese', 'Soup', 'Noodles', 'Comfort'],
-      },
-      {
-        id: '16',
-        title: 'Ethiopian Injera Platter',
-        description: 'Traditional spongy bread with spiced lentils, vegetables, and berbere sauce',
-        price: 17.99,
-        image: 'https://images.pexels.com/photos/6210959/pexels-photo-6210959.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Almaz Tadesse',
-        cookRating: 4.7,
-        distance: 2.8,
-        prepTime: 40,
-        mealType: 'dinner',
-        tags: ['Ethiopian', 'Spicy', 'Traditional', 'Vegetarian'],
-      },
-      {
-        id: '17',
-        title: 'Brazilian Feijoada',
-        description: 'Traditional black bean stew with pork, sausage, served with rice and collard greens',
-        price: 20.99,
-        image: 'https://images.pexels.com/photos/8477552/pexels-photo-8477552.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Isabella Santos',
-        cookRating: 4.8,
-        distance: 3.1,
-        prepTime: 55,
-        mealType: 'dinner',
-        tags: ['Brazilian', 'Hearty', 'Traditional', 'Comfort'],
-      },
-      {
-        id: '18',
-        title: 'Turkish Breakfast Spread',
-        description: 'Traditional Turkish breakfast with cheese, olives, tomatoes, honey, and fresh bread',
-        price: 16.99,
-        image: 'https://images.pexels.com/photos/376464/pexels-photo-376464.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Mehmet Özkan',
-        cookRating: 4.6,
-        distance: 2.4,
-        prepTime: 25,
-        mealType: 'breakfast',
-        tags: ['Turkish', 'Traditional', 'Fresh', 'Variety'],
-      },
-      {
-        id: '19',
-        title: 'Peruvian Ceviche',
-        description: 'Fresh fish marinated in lime juice with red onions, cilantro, and sweet potato',
-        price: 21.99,
-        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Carmen Flores',
-        cookRating: 4.9,
-        distance: 1.9,
-        prepTime: 20,
-        mealType: 'lunch',
-        tags: ['Peruvian', 'Seafood', 'Fresh', 'Citrusy'],
-      },
-      {
-        id: '20',
-        title: 'Russian Borscht',
-        description: 'Traditional beet soup with cabbage, carrots, and sour cream, served with dark bread',
-        price: 13.99,
-        image: 'https://images.pexels.com/photos/2347311/pexels-photo-2347311.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Anya Volkov',
-        cookRating: 4.5,
-        distance: 2.6,
-        prepTime: 35,
-        mealType: 'lunch',
-        tags: ['Russian', 'Soup', 'Traditional', 'Warming'],
-      },
-      {
-        id: '21',
-        title: 'Lebanese Mezze Platter',
-        description: 'Assorted Middle Eastern appetizers: hummus, tabbouleh, falafel, and pita bread',
-        price: 18.99,
-        image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Layla Khoury',
-        cookRating: 4.7,
-        distance: 2.0,
-        prepTime: 30,
-        mealType: 'lunch',
-        tags: ['Lebanese', 'Mezze', 'Healthy', 'Variety'],
-      },
-      {
-        id: '22',
-        title: 'Jamaican Jerk Chicken',
-        description: 'Spicy marinated chicken with rice and peas, plantains, and scotch bonnet sauce',
-        price: 19.50,
-        image: 'https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Marcus Campbell',
-        cookRating: 4.8,
-        distance: 2.7,
-        prepTime: 45,
-        mealType: 'dinner',
-        tags: ['Jamaican', 'Spicy', 'Caribbean', 'Flavorful'],
-      },
-      {
-        id: '23',
-        title: 'Polish Pierogi',
-        description: 'Handmade dumplings filled with potato and cheese, served with sour cream and onions',
-        price: 14.99,
-        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Anna Kowalski',
-        cookRating: 4.6,
-        distance: 1.8,
-        prepTime: 30,
-        mealType: 'lunch',
-        tags: ['Polish', 'Dumplings', 'Comfort', 'Homemade'],
-      },
-      {
-        id: '24',
-        title: 'Nigerian Jollof Rice',
-        description: 'Spiced rice with tomatoes, peppers, and chicken, served with plantains',
-        price: 16.99,
-        image: 'https://images.pexels.com/photos/4518843/pexels-photo-4518843.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Adunni Okafor',
-        cookRating: 4.7,
-        distance: 2.3,
-        prepTime: 40,
-        mealType: 'dinner',
-        tags: ['Nigerian', 'Rice', 'Spicy', 'Traditional'],
-      },
-      {
-        id: '25',
-        title: 'Swedish Meatballs',
-        description: 'Traditional meatballs with cream sauce, lingonberry jam, and mashed potatoes',
-        price: 17.50,
-        image: 'https://images.pexels.com/photos/8477552/pexels-photo-8477552.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookName: 'Erik Andersson',
-        cookRating: 4.5,
-        distance: 2.9,
-        prepTime: 35,
-        mealType: 'dinner',
-        tags: ['Swedish', 'Meatballs', 'Traditional', 'Comfort'],
+        foodRating: 4.9,
+        totalFoodReviews: 156,
+        isPopular: true,
+        isNew: false,
+        allergens: ['Eggs', 'Gluten', 'Soy'],
+        nutritionInfo: {
+          calories: 680,
+          protein: 28,
+          carbs: 65,
+          fat: 32,
+        },
       },
     ];
     setFoodItems(mockFoodItems);
@@ -432,6 +316,7 @@ export default function HomeScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadFoodItems();
+    await loadCooks();
     setRefreshing(false);
   };
 
@@ -459,6 +344,14 @@ export default function HomeScreen() {
       pathname: '/food-detail',
       params: { foodItem: JSON.stringify(item) }
     });
+  };
+
+  const handleCookPress = (cookId: string) => {
+    const cook = cooks.find(c => c.id === cookId);
+    if (cook) {
+      setSelectedCook(cook);
+      setShowCookProfile(true);
+    }
   };
 
   const handleAddressSelect = (address: SavedAddress) => {
@@ -491,6 +384,17 @@ export default function HomeScreen() {
   };
 
   const displayAddress = selectedAddress?.address || address || 'Getting your location...';
+
+  const renderStars = (rating: number, size: number = 14) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        size={size}
+        color={index < Math.floor(rating) ? theme.colors.secondary : theme.colors.outline}
+        fill={index < Math.floor(rating) ? theme.colors.secondary : 'transparent'}
+      />
+    ));
+  };
 
   return (
     <View style={styles.container}>
@@ -610,15 +514,224 @@ export default function HomeScreen() {
             </Card>
           ) : (
             filteredFoodItems.map((item) => (
-              <FoodCard
-                key={item.id}
-                item={item}
-                onPress={() => handleFoodItemPress(item)}
-              />
+              <Card key={item.id} style={styles.foodCard}>
+                <TouchableOpacity onPress={() => handleFoodItemPress(item)} activeOpacity={0.9}>
+                  <View style={styles.cardContent}>
+                    {/* Food Image with Badges */}
+                    <View style={styles.imageContainer}>
+                      <Image source={{ uri: item.image }} style={styles.foodImage} />
+                      <View style={styles.badges}>
+                        {item.isPopular && (
+                          <View style={[styles.badge, styles.popularBadge]}>
+                            <Text style={styles.badgeText}>Popular</Text>
+                          </View>
+                        )}
+                        {item.isNew && (
+                          <View style={[styles.badge, styles.newBadge]}>
+                            <Text style={styles.badgeText}>New</Text>
+                          </View>
+                        )}
+                      </View>
+                      <TouchableOpacity style={styles.heartButton}>
+                        <Heart size={20} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                    
+                    {/* Food Info */}
+                    <View style={styles.foodInfo}>
+                      <View style={styles.foodHeader}>
+                        <Text style={styles.foodTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <Text style={styles.foodPrice}>${item.price.toFixed(2)}</Text>
+                      </View>
+                      
+                      <Text style={styles.foodDescription} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                      
+                      {/* Food Rating */}
+                      <View style={styles.foodRating}>
+                        <View style={styles.ratingStars}>
+                          {renderStars(item.foodRating)}
+                        </View>
+                        <Text style={styles.ratingText}>
+                          {item.foodRating} ({item.totalFoodReviews} reviews)
+                        </Text>
+                      </View>
+                      
+                      {/* Cook Info */}
+                      <TouchableOpacity 
+                        style={styles.cookSection}
+                        onPress={() => handleCookPress(item.cookId)}
+                      >
+                        <Image 
+                          source={{ uri: cooks.find(c => c.id === item.cookId)?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop' }} 
+                          style={styles.cookAvatar} 
+                        />
+                        <View style={styles.cookInfo}>
+                          <View style={styles.cookNameRow}>
+                            <Text style={styles.cookName}>{item.cookName}</Text>
+                            {cooks.find(c => c.id === item.cookId)?.isVerified && (
+                              <Award size={14} color={theme.colors.primary} />
+                            )}
+                          </View>
+                          <View style={styles.cookRating}>
+                            <Star size={12} color={theme.colors.secondary} fill={theme.colors.secondary} />
+                            <Text style={styles.cookRatingText}>{item.cookRating}</Text>
+                            <Text style={styles.cookExperience}>
+                              • {cooks.find(c => c.id === item.cookId)?.yearsExperience}y exp
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.viewProfile}>View →</Text>
+                      </TouchableOpacity>
+                      
+                      {/* Meta Info */}
+                      <View style={styles.metaInfo}>
+                        <View style={styles.metaItem}>
+                          <MapPin size={14} color={theme.colors.onSurfaceVariant} />
+                          <Text style={styles.metaText}>{item.distance}km</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                          <Clock size={14} color={theme.colors.onSurfaceVariant} />
+                          <Text style={styles.metaText}>{item.prepTime}min</Text>
+                        </View>
+                        <View style={styles.metaItem}>
+                          <Users size={14} color={theme.colors.onSurfaceVariant} />
+                          <Text style={styles.metaText}>{cooks.find(c => c.id === item.cookId)?.totalOrders || 0} orders</Text>
+                        </View>
+                      </View>
+                      
+                      {/* Tags */}
+                      <View style={styles.tags}>
+                        {item.tags.slice(0, 3).map((tag) => (
+                          <View key={tag} style={styles.tag}>
+                            <Text style={styles.tagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Card>
             ))
           )}
         </View>
       </ScrollView>
+
+      {/* Cook Profile Modal */}
+      <Modal
+        visible={showCookProfile}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCookProfile(false)}
+      >
+        {selectedCook && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Cook Profile</Text>
+              <TouchableOpacity 
+                onPress={() => setShowCookProfile(false)}
+                style={styles.modalCloseButton}
+              >
+                <X size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              {/* Cook Header */}
+              <View style={styles.cookProfileHeader}>
+                <Image source={{ uri: selectedCook.avatar }} style={styles.cookProfileAvatar} />
+                <View style={styles.cookProfileInfo}>
+                  <View style={styles.cookProfileNameRow}>
+                    <Text style={styles.cookProfileName}>{selectedCook.name}</Text>
+                    {selectedCook.isVerified && (
+                      <Award size={20} color={theme.colors.primary} />
+                    )}
+                  </View>
+                  <Text style={styles.cookProfileLocation}>{selectedCook.location}</Text>
+                  <View style={styles.cookProfileRating}>
+                    <View style={styles.ratingStars}>
+                      {renderStars(selectedCook.rating, 16)}
+                    </View>
+                    <Text style={styles.cookProfileRatingText}>
+                      {selectedCook.rating} ({selectedCook.totalReviews} reviews)
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Cook Stats */}
+              <View style={styles.cookStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{selectedCook.yearsExperience}</Text>
+                  <Text style={styles.statLabel}>Years Experience</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{selectedCook.totalOrders}</Text>
+                  <Text style={styles.statLabel}>Total Orders</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{selectedCook.responseTime}</Text>
+                  <Text style={styles.statLabel}>Response Time</Text>
+                </View>
+              </View>
+
+              {/* Badges */}
+              <View style={styles.cookBadges}>
+                <Text style={styles.sectionTitle}>Achievements</Text>
+                <View style={styles.badgesList}>
+                  {selectedCook.badges.map((badge, index) => (
+                    <View key={index} style={styles.achievementBadge}>
+                      <Award size={16} color={theme.colors.primary} />
+                      <Text style={styles.achievementText}>{badge}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Specialties */}
+              <View style={styles.cookSpecialties}>
+                <Text style={styles.sectionTitle}>Specialties</Text>
+                <View style={styles.specialtiesList}>
+                  {selectedCook.specialties.map((specialty, index) => (
+                    <View key={index} style={styles.specialtyTag}>
+                      <Text style={styles.specialtyText}>{specialty}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+
+              {/* Bio */}
+              <View style={styles.cookBio}>
+                <Text style={styles.sectionTitle}>About</Text>
+                <Text style={styles.bioText}>{selectedCook.bio}</Text>
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.cookActions}>
+                <Button
+                  title="View Menu"
+                  onPress={() => {
+                    setShowCookProfile(false);
+                    // Filter by this cook
+                  }}
+                  style={styles.actionButton}
+                />
+                <Button
+                  title="Message Cook"
+                  variant="outline"
+                  onPress={() => {
+                    // Open messaging
+                  }}
+                  style={styles.actionButton}
+                />
+              </View>
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
 
       {/* Address Selection Modal */}
       <Modal
@@ -660,33 +773,6 @@ export default function HomeScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-
-            {/* Google Maps Integration */}
-            <Card style={styles.mapCard}>
-              <View style={styles.mapHeader}>
-                <MapPin size={24} color={theme.colors.primary} />
-                <Text style={styles.mapTitle}>Select on Map</Text>
-              </View>
-              
-              <View style={styles.mapPlaceholder}>
-                <View style={styles.mapPreview}>
-                  <Text style={styles.mapPreviewText}>🗺️</Text>
-                  <Text style={styles.mapPlaceholderText}>
-                    Interactive Google Maps
-                  </Text>
-                  <Text style={styles.mapPlaceholderSubtext}>
-                    Tap anywhere on the map to set your delivery location
-                  </Text>
-                </View>
-              </View>
-              
-              <Button
-                title="Open Map Selector"
-                variant="outline"
-                onPress={() => setShowMapSelector(true)}
-                style={styles.mapButton}
-              />
-            </Card>
 
             {/* Saved Addresses */}
             <View style={styles.savedAddressesSection}>
@@ -929,6 +1015,175 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
     textAlign: 'center',
   },
+  foodCard: {
+    padding: 0,
+    marginBottom: theme.spacing.lg,
+    overflow: 'hidden',
+  },
+  cardContent: {
+    gap: theme.spacing.md,
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  foodImage: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+  },
+  badges: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    left: theme.spacing.md,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  badge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  popularBadge: {
+    backgroundColor: theme.colors.secondary,
+  },
+  newBadge: {
+    backgroundColor: theme.colors.primary,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+  },
+  heartButton: {
+    position: 'absolute',
+    top: theme.spacing.md,
+    right: theme.spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  foodInfo: {
+    padding: theme.spacing.lg,
+    gap: theme.spacing.md,
+  },
+  foodHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  foodTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginRight: theme.spacing.md,
+  },
+  foodPrice: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+  },
+  foodDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 20,
+  },
+  foodRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  cookSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+    gap: theme.spacing.md,
+  },
+  cookAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  cookInfo: {
+    flex: 1,
+  },
+  cookNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+  },
+  cookName: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  cookRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  cookRatingText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  cookExperience: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  viewProfile: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  metaInfo: {
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  metaText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  tags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  tag: {
+    backgroundColor: theme.colors.surfaceVariant,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  tagText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+  },
   modalContainer: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -961,6 +1216,135 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
   },
+  cookProfileHeader: {
+    flexDirection: 'row',
+    gap: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+  },
+  cookProfileAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  cookProfileInfo: {
+    flex: 1,
+  },
+  cookProfileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
+  cookProfileName: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  cookProfileLocation: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.sm,
+  },
+  cookProfileRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  cookProfileRatingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  cookStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  cookBadges: {
+    marginBottom: theme.spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+  },
+  badgesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  achievementBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  achievementText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  cookSpecialties: {
+    marginBottom: theme.spacing.xl,
+  },
+  specialtiesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  specialtyTag: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  specialtyText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  cookBio: {
+    marginBottom: theme.spacing.xl,
+  },
+  bioText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 20,
+  },
+  cookActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  actionButton: {
+    flex: 1,
+  },
   addressOption: {
     marginBottom: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
@@ -992,63 +1376,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
   },
-  mapCard: {
-    marginBottom: theme.spacing.xl,
-    alignItems: 'center',
-  },
-  mapHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-    alignSelf: 'flex-start',
-  },
-  mapTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-  },
-  mapPlaceholder: {
-    width: '100%',
-    marginBottom: theme.spacing.lg,
-  },
-  mapPreview: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xxl,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-  },
-  mapPreviewText: {
-    fontSize: 48,
-    marginBottom: theme.spacing.md,
-  },
-  mapPlaceholderText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.sm,
-  },
-  mapPlaceholderSubtext: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  mapButton: {
-    alignSelf: 'center',
-  },
   savedAddressesSection: {
     marginBottom: theme.spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.md,
   },
   addAddressButton: {
     flexDirection: 'row',
