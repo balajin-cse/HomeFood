@@ -8,10 +8,12 @@ import {
   Platform,
   Alert,
   Image,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, CreditCard, Clock, Check, CreditCard as Edit3 } from 'lucide-react-native';
+import { ArrowLeft, MapPin, CreditCard, Clock, Check, CreditCard as Edit3, CheckCircle, Package } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -20,6 +22,8 @@ import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
 interface CartData {
   items: any[];
   deliveryInstructions: string;
@@ -27,6 +31,67 @@ interface CartData {
   deliveryFee: number;
   serviceFee: number;
   total: number;
+}
+
+// Success Animation Component
+function OrderSuccessAnimation({ visible, onComplete }: { visible: boolean; onComplete: () => void }) {
+  const scaleAnim = new Animated.Value(0);
+  const fadeAnim = new Animated.Value(0);
+  const checkAnim = new Animated.Value(0);
+
+  useEffect(() => {
+    if (visible) {
+      // Start animations sequence
+      Animated.sequence([
+        // Fade in background
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        // Scale in circle
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        // Show checkmark
+        Animated.timing(checkAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Complete after 2 seconds
+        setTimeout(onComplete, 2000);
+      });
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View style={[styles.successOverlay, { opacity: fadeAnim }]}>
+      <View style={styles.successContainer}>
+        <Animated.View 
+          style={[
+            styles.successCircle,
+            { transform: [{ scale: scaleAnim }] }
+          ]}
+        >
+          <Animated.View style={{ opacity: checkAnim }}>
+            <CheckCircle size={64} color="white" />
+          </Animated.View>
+        </Animated.View>
+        
+        <Animated.View style={{ opacity: checkAnim }}>
+          <Text style={styles.successTitle}>Order Placed Successfully!</Text>
+          <Text style={styles.successSubtitle}>Your delicious meal is being prepared</Text>
+        </Animated.View>
+      </View>
+    </Animated.View>
+  );
 }
 
 export default function CheckoutScreen() {
@@ -39,6 +104,7 @@ export default function CheckoutScreen() {
   const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('asap');
   const [cartData, setCartData] = useState<CartData | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   useEffect(() => {
     // Load cart data from params if available, otherwise use current cart
@@ -143,33 +209,8 @@ export default function CheckoutScreen() {
       // Clear the cart after successful order
       clearCart();
       
-      // Show success message and navigate to tracking
-      Alert.alert(
-        'Order Placed Successfully! 🎉',
-        `Your order has been confirmed and is being prepared.\n\nOrder ID: ${orderId}\nTracking: ${trackingNumber}\n\nEstimated delivery: ${selectedTimeData?.time || '30-45 min'}`,
-        [
-          { 
-            text: 'Track Order', 
-            onPress: () => {
-              router.replace({
-                pathname: '/order-tracking',
-                params: {
-                  orderId,
-                  trackingNumber,
-                  foodTitle: cartData.items[0]?.title || 'Your Order',
-                  cookName: cartData.items[0]?.cookName || 'Cook',
-                  quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0).toString(),
-                  totalPrice: cartData.total.toString(),
-                }
-              });
-            }
-          },
-          { 
-            text: 'View Orders', 
-            onPress: () => router.replace('/(tabs)/orders') 
-          }
-        ]
-      );
+      // Show success animation
+      setShowSuccessAnimation(true);
 
     } catch (error) {
       console.error('Error placing order:', error);
@@ -178,9 +219,16 @@ export default function CheckoutScreen() {
         'There was an error placing your order. Please try again.',
         [{ text: 'OK' }]
       );
-    } finally {
       setIsPlacingOrder(false);
     }
+  };
+
+  const handleSuccessAnimationComplete = () => {
+    setShowSuccessAnimation(false);
+    setIsPlacingOrder(false);
+    
+    // Navigate to orders page
+    router.replace('/(tabs)/orders');
   };
 
   if (!cartData || cartData.items.length === 0) {
@@ -378,6 +426,12 @@ export default function CheckoutScreen() {
           style={styles.placeOrderButton}
         />
       </View>
+
+      {/* Success Animation Overlay */}
+      <OrderSuccessAnimation 
+        visible={showSuccessAnimation} 
+        onComplete={handleSuccessAnimationComplete}
+      />
     </View>
   );
 }
@@ -587,5 +641,48 @@ const styles = StyleSheet.create({
   },
   placeOrderButton: {
     marginBottom: 0,
+  },
+  // Success Animation Styles
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  successContainer: {
+    alignItems: 'center',
+    gap: theme.spacing.xl,
+  },
+  successCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: theme.colors.success,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  successSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: 'white',
+    opacity: 0.9,
+    textAlign: 'center',
   },
 });
