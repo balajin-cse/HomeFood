@@ -23,7 +23,11 @@
         "foregroundImage": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=512&h=512&fit=crop",
         "backgroundColor": "#FF6B35"
       },
-      "package": "com.homefood.app"
+      "package": "com.homefood.app",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop",
@@ -36,14 +40,17 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow HomeFood to use your location to find nearby home cooks and provide accurate delivery."
         }
-      ],
-      [
-        "react-native-purchases",
-        {
-          "revenuecat_project_id": "your_revenuecat_project_id"
-        }
       ]
     ],
-    "scheme": "homefood"
+    "scheme": "homefood",
+    "extra": {
+      "revenuecat_project_id": "projce455fd1",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "327ff1f3-491a-454b-91ec-4e831c455579"
+      }
+    }
   }
 }

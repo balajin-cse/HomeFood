@@ -57,8 +57,9 @@ export const useSubscription = () => {
 // RevenueCat configuration
 const REVENUECAT_API_KEY = Platform.select({
   ios: 'appl_your_ios_api_key_here',
-  android: 'goog_your_android_api_key_here',
-  web: 'web_your_web_api_key_here', // For testing only
+  android: 'amzn_FHldnKMIGsdYYNIuWtPUmJyFBbv',
+  //amazon: 'amzn_FHldnKMIGsdYYNIuWtPUmJyFBbv',
+  web: 'rcb_jbHMuJSFiSaqYFfyMAujNWLlorhd', // For testing only
 });
 
 export const SubscriptionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
