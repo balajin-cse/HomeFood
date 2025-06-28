@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X, Star, Award, Clock, Users, Heart, SlidersHorizontal } from 'lucide-react-native';
+import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X, Star, Award, Clock, Users, Heart } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -97,14 +97,23 @@ const MEAL_TYPES = [
   { id: 'dinner', label: 'Dinner', emoji: '🍽️' },
 ];
 
+const SORT_OPTIONS = [
+  { id: 'relevance', label: 'Relevance' },
+  { id: 'price_low', label: 'Price: Low to High' },
+  { id: 'price_high', label: 'Price: High to Low' },
+  { id: 'rating', label: 'Highest Rated' },
+  { id: 'distance', label: 'Nearest First' },
+  { id: 'prep_time', label: 'Fastest Prep' },
+];
+
 const CUISINE_TYPES = [
-  'Italian', 'Asian', 'Mexican', 'Mediterranean', 'American', 'Indian', 
-  'French', 'Japanese', 'Thai', 'Greek', 'Chinese', 'Korean'
+  'Italian', 'Asian', 'Mexican', 'American', 'Mediterranean', 'Indian', 
+  'Thai', 'Japanese', 'French', 'Chinese', 'Greek', 'Middle Eastern'
 ];
 
 const DIETARY_RESTRICTIONS = [
   'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 
-  'Keto', 'Paleo', 'Low-Carb', 'Halal', 'Kosher'
+  'Keto', 'Low-Carb', 'Halal', 'Kosher', 'Organic'
 ];
 
 export default function HomeScreen() {
@@ -124,9 +133,9 @@ export default function HomeScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedCook, setSelectedCook] = useState<CookProfile | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<SavedAddress | null>(null);
-  const [filters, setFilters] = useState<FilterOptions>({
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     sortBy: 'relevance',
-    priceRange: { min: 0, max: 50 },
+    priceRange: { min: 0, max: 100 },
     maxDistance: 25,
     minRating: 0,
     maxPrepTime: 120,
@@ -246,6 +255,7 @@ export default function HomeScreen() {
   const loadFoodItems = async () => {
     // Enhanced mock data with detailed food ratings and cook information
     const mockFoodItems: FoodItem[] = [
+      // Maria Rodriguez (Cook ID: 1) - Italian dishes
       {
         id: '1',
         title: 'Homemade Pasta Carbonara',
@@ -271,82 +281,6 @@ export default function HomeScreen() {
           fat: 28,
         },
       },
-      {
-        id: '2',
-        title: 'Artisan Avocado Toast',
-        description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, microgreens, and hemp seeds',
-        price: 12.50,
-        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '2',
-        cookName: 'Sarah Johnson',
-        cookRating: 4.7,
-        distance: 0.8,
-        prepTime: 15,
-        mealType: 'breakfast',
-        tags: ['Healthy', 'Vegetarian', 'Fresh', 'Organic'],
-        foodRating: 4.6,
-        totalFoodReviews: 67,
-        isPopular: false,
-        isNew: true,
-        allergens: ['Gluten'],
-        nutritionInfo: {
-          calories: 320,
-          protein: 12,
-          carbs: 35,
-          fat: 18,
-        },
-      },
-      {
-        id: '3',
-        title: 'Pan-Seared Salmon',
-        description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
-        price: 24.99,
-        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '3',
-        cookName: 'David Chen',
-        cookRating: 4.8,
-        distance: 2.1,
-        prepTime: 35,
-        mealType: 'dinner',
-        tags: ['Seafood', 'Healthy', 'Gourmet', 'Protein Rich'],
-        foodRating: 4.9,
-        totalFoodReviews: 124,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Fish'],
-        nutritionInfo: {
-          calories: 450,
-          protein: 35,
-          carbs: 25,
-          fat: 22,
-        },
-      },
-      {
-        id: '4',
-        title: 'Authentic Ramen Bowl',
-        description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
-        price: 18.99,
-        image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '4',
-        cookName: 'Kenji Tanaka',
-        cookRating: 4.9,
-        distance: 1.5,
-        prepTime: 45,
-        mealType: 'lunch',
-        tags: ['Japanese', 'Ramen', 'Comfort Food', 'Authentic'],
-        foodRating: 4.9,
-        totalFoodReviews: 156,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Eggs', 'Gluten', 'Soy'],
-        nutritionInfo: {
-          calories: 680,
-          protein: 28,
-          carbs: 65,
-          fat: 32,
-        },
-      },
-      // Additional items for Maria Rodriguez
       {
         id: '5',
         title: 'Margherita Pizza',
@@ -397,12 +331,37 @@ export default function HomeScreen() {
           fat: 28,
         },
       },
-      // Additional items for Sarah Johnson
+      // Sarah Johnson (Cook ID: 2) - Healthy/Vegan dishes
+      {
+        id: '2',
+        title: 'Artisan Avocado Toast',
+        description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, microgreens, and hemp seeds',
+        price: 12.50,
+        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '2',
+        cookName: 'Sarah Johnson',
+        cookRating: 4.7,
+        distance: 0.8,
+        prepTime: 15,
+        mealType: 'breakfast',
+        tags: ['Healthy', 'Vegetarian', 'Fresh', 'Organic'],
+        foodRating: 4.6,
+        totalFoodReviews: 67,
+        isPopular: false,
+        isNew: true,
+        allergens: ['Gluten'],
+        nutritionInfo: {
+          calories: 320,
+          protein: 12,
+          carbs: 35,
+          fat: 18,
+        },
+      },
       {
         id: '7',
         title: 'Quinoa Buddha Bowl',
-        description: 'Nutritious bowl with quinoa, roasted vegetables, chickpeas, and tahini dressing',
-        price: 14.99,
+        description: 'Nutrient-packed bowl with quinoa, roasted vegetables, chickpeas, and tahini dressing',
+        price: 15.99,
         image: 'https://images.pexels.com/photos/1640770/pexels-photo-1640770.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookId: '2',
         cookName: 'Sarah Johnson',
@@ -410,69 +369,119 @@ export default function HomeScreen() {
         distance: 0.8,
         prepTime: 20,
         mealType: 'lunch',
-        tags: ['Healthy', 'Vegan', 'Protein Rich', 'Gluten-Free'],
-        foodRating: 4.5,
-        totalFoodReviews: 78,
-        isPopular: false,
-        isNew: true,
-        allergens: [],
+        tags: ['Healthy', 'Vegan', 'Gluten-Free', 'Protein Rich'],
+        foodRating: 4.8,
+        totalFoodReviews: 54,
+        isPopular: true,
+        isNew: false,
+        allergens: ['Sesame'],
         nutritionInfo: {
           calories: 380,
-          protein: 15,
-          carbs: 45,
+          protein: 16,
+          carbs: 42,
           fat: 14,
         },
       },
-      // Additional items for David Chen
+      // David Chen (Cook ID: 3) - Asian Fusion dishes
       {
-        id: '8',
-        title: 'Miso Glazed Black Cod',
-        description: 'Delicate black cod marinated in sweet miso glaze, served with bok choy and jasmine rice',
-        price: 32.99,
+        id: '3',
+        title: 'Pan-Seared Salmon',
+        description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
+        price: 24.99,
         image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookId: '3',
         cookName: 'David Chen',
         cookRating: 4.8,
         distance: 2.1,
-        prepTime: 40,
+        prepTime: 35,
         mealType: 'dinner',
-        tags: ['Asian Fusion', 'Seafood', 'Gourmet', 'Japanese'],
-        foodRating: 4.8,
-        totalFoodReviews: 95,
+        tags: ['Seafood', 'Healthy', 'Gourmet', 'Protein Rich'],
+        foodRating: 4.9,
+        totalFoodReviews: 124,
         isPopular: true,
         isNew: false,
-        allergens: ['Fish', 'Soy'],
+        allergens: ['Fish'],
         nutritionInfo: {
-          calories: 420,
-          protein: 38,
-          carbs: 28,
-          fat: 18,
+          calories: 450,
+          protein: 35,
+          carbs: 25,
+          fat: 22,
         },
       },
-      // Additional items for Kenji Tanaka
       {
-        id: '9',
-        title: 'Chicken Teriyaki Bento',
-        description: 'Traditional bento box with teriyaki chicken, steamed rice, pickled vegetables, and miso soup',
-        price: 16.99,
+        id: '8',
+        title: 'Korean BBQ Tacos',
+        description: 'Fusion tacos with marinated bulgogi beef, kimchi slaw, and gochujang aioli',
+        price: 18.99,
+        image: 'https://images.pexels.com/photos/4958792/pexels-photo-4958792.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '3',
+        cookName: 'David Chen',
+        cookRating: 4.8,
+        distance: 2.1,
+        prepTime: 25,
+        mealType: 'lunch',
+        tags: ['Asian Fusion', 'Korean', 'Spicy', 'Street Food'],
+        foodRating: 4.7,
+        totalFoodReviews: 78,
+        isPopular: false,
+        isNew: true,
+        allergens: ['Gluten', 'Soy'],
+        nutritionInfo: {
+          calories: 520,
+          protein: 28,
+          carbs: 35,
+          fat: 26,
+        },
+      },
+      // Kenji Tanaka (Cook ID: 4) - Japanese dishes
+      {
+        id: '4',
+        title: 'Authentic Ramen Bowl',
+        description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
+        price: 18.99,
         image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
         cookId: '4',
         cookName: 'Kenji Tanaka',
         cookRating: 4.9,
         distance: 1.5,
-        prepTime: 25,
+        prepTime: 45,
         mealType: 'lunch',
-        tags: ['Japanese', 'Traditional', 'Bento', 'Chicken'],
-        foodRating: 4.7,
-        totalFoodReviews: 112,
-        isPopular: false,
+        tags: ['Japanese', 'Ramen', 'Comfort Food', 'Authentic'],
+        foodRating: 4.9,
+        totalFoodReviews: 156,
+        isPopular: true,
         isNew: false,
-        allergens: ['Soy', 'Gluten'],
+        allergens: ['Eggs', 'Gluten', 'Soy'],
         nutritionInfo: {
-          calories: 580,
+          calories: 680,
+          protein: 28,
+          carbs: 65,
+          fat: 32,
+        },
+      },
+      {
+        id: '9',
+        title: 'Chirashi Bowl',
+        description: 'Fresh sashimi selection over seasoned sushi rice with wasabi and pickled vegetables',
+        price: 26.99,
+        image: 'https://images.pexels.com/photos/357756/pexels-photo-357756.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '4',
+        cookName: 'Kenji Tanaka',
+        cookRating: 4.9,
+        distance: 1.5,
+        prepTime: 20,
+        mealType: 'dinner',
+        tags: ['Japanese', 'Sushi', 'Fresh', 'Premium'],
+        foodRating: 4.8,
+        totalFoodReviews: 92,
+        isPopular: true,
+        isNew: false,
+        allergens: ['Fish', 'Soy'],
+        nutritionInfo: {
+          calories: 420,
           protein: 32,
-          carbs: 55,
-          fat: 22,
+          carbs: 45,
+          fat: 12,
         },
       },
     ];
@@ -484,18 +493,6 @@ export default function HomeScreen() {
     await loadFoodItems();
     await loadCooks();
     setRefreshing(false);
-  };
-
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (filters.sortBy !== 'relevance') count++;
-    if (filters.priceRange.min > 0 || filters.priceRange.max < 50) count++;
-    if (filters.maxDistance < 25) count++;
-    if (filters.minRating > 0) count++;
-    if (filters.maxPrepTime < 120) count++;
-    if (filters.cuisineTypes.length > 0) count++;
-    if (filters.dietaryRestrictions.length > 0) count++;
-    return count;
   };
 
   const applyFilters = (items: FoodItem[]) => {
@@ -523,38 +520,39 @@ export default function HomeScreen() {
 
     // Apply price range filter
     filtered = filtered.filter(item => 
-      item.price >= filters.priceRange.min && item.price <= filters.priceRange.max
+      item.price >= filterOptions.priceRange.min && 
+      item.price <= filterOptions.priceRange.max
     );
 
     // Apply distance filter
-    filtered = filtered.filter(item => item.distance <= filters.maxDistance);
+    filtered = filtered.filter(item => item.distance <= filterOptions.maxDistance);
 
     // Apply rating filter
-    if (filters.minRating > 0) {
-      filtered = filtered.filter(item => item.foodRating >= filters.minRating);
+    if (filterOptions.minRating > 0) {
+      filtered = filtered.filter(item => item.foodRating >= filterOptions.minRating);
     }
 
     // Apply prep time filter
-    filtered = filtered.filter(item => item.prepTime <= filters.maxPrepTime);
+    filtered = filtered.filter(item => item.prepTime <= filterOptions.maxPrepTime);
 
     // Apply cuisine type filter
-    if (filters.cuisineTypes.length > 0) {
+    if (filterOptions.cuisineTypes.length > 0) {
       filtered = filtered.filter(item =>
-        item.tags.some(tag => filters.cuisineTypes.includes(tag))
+        item.tags.some(tag => filterOptions.cuisineTypes.includes(tag))
       );
     }
 
     // Apply dietary restrictions filter
-    if (filters.dietaryRestrictions.length > 0) {
+    if (filterOptions.dietaryRestrictions.length > 0) {
       filtered = filtered.filter(item =>
-        filters.dietaryRestrictions.every(restriction =>
+        filterOptions.dietaryRestrictions.every(restriction =>
           item.tags.includes(restriction)
         )
       );
     }
 
     // Apply sorting
-    switch (filters.sortBy) {
+    switch (filterOptions.sortBy) {
       case 'price_low':
         filtered.sort((a, b) => a.price - b.price);
         break;
@@ -570,13 +568,9 @@ export default function HomeScreen() {
       case 'prep_time':
         filtered.sort((a, b) => a.prepTime - b.prepTime);
         break;
-      default:
-        // Relevance - keep original order but prioritize popular items
-        filtered.sort((a, b) => {
-          if (a.isPopular && !b.isPopular) return -1;
-          if (!a.isPopular && b.isPopular) return 1;
-          return b.foodRating - a.foodRating;
-        });
+      default: // relevance
+        // Keep original order for relevance
+        break;
     }
 
     return filtered;
@@ -609,6 +603,11 @@ export default function HomeScreen() {
     }
   };
 
+  const handleViewCookMenu = (cookId: string) => {
+    setSelectedCookId(cookId);
+    setShowCookProfile(false);
+  };
+
   const handleAddressSelect = (address: SavedAddress) => {
     setSelectedAddress(address);
     if (address.coordinates) {
@@ -635,16 +634,34 @@ export default function HomeScreen() {
     setSelectedCookId(null);
   };
 
-  const resetFilters = () => {
-    setFilters({
+  const clearAllFilters = () => {
+    setFilterOptions({
       sortBy: 'relevance',
-      priceRange: { min: 0, max: 50 },
+      priceRange: { min: 0, max: 100 },
       maxDistance: 25,
       minRating: 0,
       maxPrepTime: 120,
       cuisineTypes: [],
       dietaryRestrictions: [],
     });
+    setSelectedMealType('all');
+    setSearchQuery('');
+    setSelectedCookId(null);
+  };
+
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filterOptions.sortBy !== 'relevance') count++;
+    if (filterOptions.priceRange.min > 0 || filterOptions.priceRange.max < 100) count++;
+    if (filterOptions.maxDistance < 25) count++;
+    if (filterOptions.minRating > 0) count++;
+    if (filterOptions.maxPrepTime < 120) count++;
+    if (filterOptions.cuisineTypes.length > 0) count++;
+    if (filterOptions.dietaryRestrictions.length > 0) count++;
+    if (selectedMealType !== 'all') count++;
+    if (searchQuery) count++;
+    if (selectedCookId) count++;
+    return count;
   };
 
   const getGreeting = () => {
@@ -719,10 +736,10 @@ export default function HomeScreen() {
             />
           </View>
           <TouchableOpacity 
-            style={styles.filterButton}
+            style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
             onPress={() => setShowFilterModal(true)}
           >
-            <SlidersHorizontal size={20} color={theme.colors.primary} />
+            <Filter size={20} color={activeFilterCount > 0 ? 'white' : theme.colors.primary} />
             {activeFilterCount > 0 && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
@@ -785,18 +802,6 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Results Counter */}
-        <View style={styles.resultsSection}>
-          <Text style={styles.resultsText}>
-            {filteredFoodItems.length} {filteredFoodItems.length === 1 ? 'dish' : 'dishes'} found
-          </Text>
-          {activeFilterCount > 0 && (
-            <TouchableOpacity onPress={resetFilters}>
-              <Text style={styles.clearFiltersText}>Clear filters</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
         {/* Premium Banner - Only show if not subscribed */}
         {!isSubscribed && (
           <TouchableOpacity 
@@ -821,6 +826,20 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
+        {/* Results Section */}
+        <View style={styles.resultsSection}>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsCount}>
+              {filteredFoodItems.length} {filteredFoodItems.length === 1 ? 'dish' : 'dishes'} found
+            </Text>
+            {activeFilterCount > 0 && (
+              <TouchableOpacity onPress={clearAllFilters}>
+                <Text style={styles.clearFiltersText}>Clear filters</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Food List */}
         <View style={styles.foodListContainer}>
           {filteredFoodItems.length === 0 ? (
@@ -844,9 +863,8 @@ export default function HomeScreen() {
               )}
               {activeFilterCount > 0 && (
                 <Button
-                  title="Reset All Filters"
-                  onPress={resetFilters}
-                  variant="outline"
+                  title="Clear All Filters"
+                  onPress={clearAllFilters}
                   style={styles.clearFilterButtonLarge}
                 />
               )}
@@ -958,10 +976,7 @@ export default function HomeScreen() {
               <View style={styles.cookActions}>
                 <Button
                   title="View Menu"
-                  onPress={() => {
-                    setShowCookProfile(false);
-                    setSelectedCookId(selectedCook.id);
-                  }}
+                  onPress={() => handleViewCookMenu(selectedCook.id)}
                   style={styles.actionButton}
                 />
                 <Button
@@ -997,187 +1012,152 @@ export default function HomeScreen() {
           </View>
 
           <ScrollView style={styles.modalContent}>
-            {/* Sort By */}
+            {/* Sort Options */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Sort By</Text>
-              <View style={styles.filterOptions}>
-                {[
-                  { value: 'relevance', label: 'Relevance' },
-                  { value: 'price_low', label: 'Price: Low to High' },
-                  { value: 'price_high', label: 'Price: High to Low' },
-                  { value: 'rating', label: 'Highest Rated' },
-                  { value: 'distance', label: 'Nearest First' },
-                  { value: 'prep_time', label: 'Fastest Prep Time' },
-                ].map((option) => (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.filterOption,
-                      filters.sortBy === option.value && styles.filterOptionSelected
-                    ]}
-                    onPress={() => setFilters(prev => ({ ...prev, sortBy: option.value as any }))}
-                  >
-                    <Text style={[
-                      styles.filterOptionText,
-                      filters.sortBy === option.value && styles.filterOptionTextSelected
-                    ]}>
-                      {option.label}
-                    </Text>
-                    {filters.sortBy === option.value && (
-                      <Check size={16} color={theme.colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {SORT_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.filterOption,
+                    filterOptions.sortBy === option.id && styles.filterOptionSelected
+                  ]}
+                  onPress={() => setFilterOptions(prev => ({ ...prev, sortBy: option.id as any }))}
+                >
+                  <Text style={[
+                    styles.filterOptionText,
+                    filterOptions.sortBy === option.id && styles.filterOptionTextSelected
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {filterOptions.sortBy === option.id && (
+                    <Check size={20} color={theme.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
             </View>
 
             {/* Price Range */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Price Range</Text>
               <View style={styles.priceRangeContainer}>
-                <View style={styles.priceInputContainer}>
-                  <Text style={styles.priceLabel}>Min</Text>
-                  <Input
-                    value={filters.priceRange.min.toString()}
-                    onChangeText={(text) => {
-                      const value = parseInt(text) || 0;
-                      setFilters(prev => ({ 
-                        ...prev, 
-                        priceRange: { ...prev.priceRange, min: value }
-                      }));
-                    }}
-                    keyboardType="numeric"
-                    style={styles.priceInput}
-                  />
-                </View>
-                <Text style={styles.priceSeparator}>to</Text>
-                <View style={styles.priceInputContainer}>
-                  <Text style={styles.priceLabel}>Max</Text>
-                  <Input
-                    value={filters.priceRange.max.toString()}
-                    onChangeText={(text) => {
-                      const value = parseInt(text) || 50;
-                      setFilters(prev => ({ 
-                        ...prev, 
-                        priceRange: { ...prev.priceRange, max: value }
-                      }));
-                    }}
-                    keyboardType="numeric"
-                    style={styles.priceInput}
-                  />
-                </View>
+                <Input
+                  placeholder="Min"
+                  value={filterOptions.priceRange.min.toString()}
+                  onChangeText={(text) => setFilterOptions(prev => ({
+                    ...prev,
+                    priceRange: { ...prev.priceRange, min: parseInt(text) || 0 }
+                  }))}
+                  keyboardType="numeric"
+                  style={styles.priceInput}
+                />
+                <Text style={styles.priceRangeSeparator}>to</Text>
+                <Input
+                  placeholder="Max"
+                  value={filterOptions.priceRange.max.toString()}
+                  onChangeText={(text) => setFilterOptions(prev => ({
+                    ...prev,
+                    priceRange: { ...prev.priceRange, max: parseInt(text) || 100 }
+                  }))}
+                  keyboardType="numeric"
+                  style={styles.priceInput}
+                />
               </View>
             </View>
 
             {/* Distance */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Maximum Distance</Text>
-              <View style={styles.sliderContainer}>
-                <Text style={styles.sliderValue}>{filters.maxDistance}km</Text>
-                <View style={styles.sliderOptions}>
-                  {[1, 5, 10, 15, 25].map((distance) => (
-                    <TouchableOpacity
-                      key={distance}
-                      style={[
-                        styles.sliderOption,
-                        filters.maxDistance === distance && styles.sliderOptionSelected
-                      ]}
-                      onPress={() => setFilters(prev => ({ ...prev, maxDistance: distance }))}
-                    >
-                      <Text style={[
-                        styles.sliderOptionText,
-                        filters.maxDistance === distance && styles.sliderOptionTextSelected
-                      ]}>
-                        {distance}km
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </View>
-
-            {/* Minimum Rating */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Minimum Rating</Text>
-              <View style={styles.ratingOptions}>
-                {[
-                  { value: 0, label: 'Any Rating' },
-                  { value: 3, label: '3+ Stars' },
-                  { value: 4, label: '4+ Stars' },
-                  { value: 4.5, label: '4.5+ Stars' },
-                ].map((option) => (
+              <Text style={styles.filterSectionTitle}>Max Distance: {filterOptions.maxDistance}km</Text>
+              <View style={styles.distanceOptions}>
+                {[1, 5, 10, 15, 25].map((distance) => (
                   <TouchableOpacity
-                    key={option.value}
+                    key={distance}
                     style={[
-                      styles.filterOption,
-                      filters.minRating === option.value && styles.filterOptionSelected
+                      styles.distanceOption,
+                      filterOptions.maxDistance === distance && styles.distanceOptionSelected
                     ]}
-                    onPress={() => setFilters(prev => ({ ...prev, minRating: option.value }))}
+                    onPress={() => setFilterOptions(prev => ({ ...prev, maxDistance: distance }))}
                   >
                     <Text style={[
-                      styles.filterOptionText,
-                      filters.minRating === option.value && styles.filterOptionTextSelected
+                      styles.distanceOptionText,
+                      filterOptions.maxDistance === distance && styles.distanceOptionTextSelected
                     ]}>
-                      {option.label}
+                      {distance}km
                     </Text>
-                    {filters.minRating === option.value && (
-                      <Check size={16} color={theme.colors.primary} />
-                    )}
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            {/* Max Prep Time */}
+            {/* Rating */}
             <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Maximum Prep Time</Text>
-              <View style={styles.sliderContainer}>
-                <Text style={styles.sliderValue}>{filters.maxPrepTime} minutes</Text>
-                <View style={styles.sliderOptions}>
-                  {[15, 30, 45, 60, 120].map((time) => (
-                    <TouchableOpacity
-                      key={time}
-                      style={[
-                        styles.sliderOption,
-                        filters.maxPrepTime === time && styles.sliderOptionSelected
-                      ]}
-                      onPress={() => setFilters(prev => ({ ...prev, maxPrepTime: time }))}
-                    >
-                      <Text style={[
-                        styles.sliderOptionText,
-                        filters.maxPrepTime === time && styles.sliderOptionTextSelected
-                      ]}>
-                        {time}min
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+              <Text style={styles.filterSectionTitle}>Minimum Rating</Text>
+              <View style={styles.ratingOptions}>
+                {[0, 3, 4, 4.5].map((rating) => (
+                  <TouchableOpacity
+                    key={rating}
+                    style={[
+                      styles.ratingOption,
+                      filterOptions.minRating === rating && styles.ratingOptionSelected
+                    ]}
+                    onPress={() => setFilterOptions(prev => ({ ...prev, minRating: rating }))}
+                  >
+                    <Text style={[
+                      styles.ratingOptionText,
+                      filterOptions.minRating === rating && styles.ratingOptionTextSelected
+                    ]}>
+                      {rating === 0 ? 'Any' : `${rating}+ ⭐`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Prep Time */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Max Prep Time: {filterOptions.maxPrepTime} min</Text>
+              <View style={styles.prepTimeOptions}>
+                {[15, 30, 45, 60, 120].map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={[
+                      styles.prepTimeOption,
+                      filterOptions.maxPrepTime === time && styles.prepTimeOptionSelected
+                    ]}
+                    onPress={() => setFilterOptions(prev => ({ ...prev, maxPrepTime: time }))}
+                  >
+                    <Text style={[
+                      styles.prepTimeOptionText,
+                      filterOptions.maxPrepTime === time && styles.prepTimeOptionTextSelected
+                    ]}>
+                      {time} min
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
             {/* Cuisine Types */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Cuisine Types</Text>
-              <View style={styles.chipContainer}>
+              <View style={styles.cuisineGrid}>
                 {CUISINE_TYPES.map((cuisine) => (
                   <TouchableOpacity
                     key={cuisine}
                     style={[
-                      styles.chip,
-                      filters.cuisineTypes.includes(cuisine) && styles.chipSelected
+                      styles.cuisineOption,
+                      filterOptions.cuisineTypes.includes(cuisine) && styles.cuisineOptionSelected
                     ]}
-                    onPress={() => {
-                      setFilters(prev => ({
-                        ...prev,
-                        cuisineTypes: prev.cuisineTypes.includes(cuisine)
-                          ? prev.cuisineTypes.filter(c => c !== cuisine)
-                          : [...prev.cuisineTypes, cuisine]
-                      }));
-                    }}
+                    onPress={() => setFilterOptions(prev => ({
+                      ...prev,
+                      cuisineTypes: prev.cuisineTypes.includes(cuisine)
+                        ? prev.cuisineTypes.filter(c => c !== cuisine)
+                        : [...prev.cuisineTypes, cuisine]
+                    }))}
                   >
                     <Text style={[
-                      styles.chipText,
-                      filters.cuisineTypes.includes(cuisine) && styles.chipTextSelected
+                      styles.cuisineOptionText,
+                      filterOptions.cuisineTypes.includes(cuisine) && styles.cuisineOptionTextSelected
                     ]}>
                       {cuisine}
                     </Text>
@@ -1189,26 +1169,24 @@ export default function HomeScreen() {
             {/* Dietary Restrictions */}
             <View style={styles.filterSection}>
               <Text style={styles.filterSectionTitle}>Dietary Restrictions</Text>
-              <View style={styles.chipContainer}>
+              <View style={styles.dietaryGrid}>
                 {DIETARY_RESTRICTIONS.map((restriction) => (
                   <TouchableOpacity
                     key={restriction}
                     style={[
-                      styles.chip,
-                      filters.dietaryRestrictions.includes(restriction) && styles.chipSelected
+                      styles.dietaryOption,
+                      filterOptions.dietaryRestrictions.includes(restriction) && styles.dietaryOptionSelected
                     ]}
-                    onPress={() => {
-                      setFilters(prev => ({
-                        ...prev,
-                        dietaryRestrictions: prev.dietaryRestrictions.includes(restriction)
-                          ? prev.dietaryRestrictions.filter(r => r !== restriction)
-                          : [...prev.dietaryRestrictions, restriction]
-                      }));
-                    }}
+                    onPress={() => setFilterOptions(prev => ({
+                      ...prev,
+                      dietaryRestrictions: prev.dietaryRestrictions.includes(restriction)
+                        ? prev.dietaryRestrictions.filter(d => d !== restriction)
+                        : [...prev.dietaryRestrictions, restriction]
+                    }))}
                   >
                     <Text style={[
-                      styles.chipText,
-                      filters.dietaryRestrictions.includes(restriction) && styles.chipTextSelected
+                      styles.dietaryOptionText,
+                      filterOptions.dietaryRestrictions.includes(restriction) && styles.dietaryOptionTextSelected
                     ]}>
                       {restriction}
                     </Text>
@@ -1221,13 +1199,13 @@ export default function HomeScreen() {
           {/* Filter Actions */}
           <View style={styles.filterActions}>
             <Button
-              title="Reset"
+              title="Clear All"
               variant="outline"
-              onPress={resetFilters}
+              onPress={clearAllFilters}
               style={styles.filterActionButton}
             />
             <Button
-              title={`Apply Filters (${filteredFoodItems.length})`}
+              title="Apply Filters"
               onPress={() => setShowFilterModal(false)}
               style={styles.filterActionButton}
             />
@@ -1431,22 +1409,25 @@ const styles = StyleSheet.create({
     elevation: 3,
     position: 'relative',
   },
+  filterButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
   filterBadge: {
     position: 'absolute',
     top: -4,
     right: -4,
     backgroundColor: theme.colors.error,
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
   filterBadgeText: {
+    color: 'white',
     fontSize: 10,
     fontFamily: 'Inter-Bold',
-    color: 'white',
   },
   cookFilterBanner: {
     paddingHorizontal: theme.spacing.lg,
@@ -1525,23 +1506,6 @@ const styles = StyleSheet.create({
   mealTypeTextActive: {
     color: 'white',
   },
-  resultsSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-  },
-  resultsText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurfaceVariant,
-  },
-  clearFiltersText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
-  },
   premiumBannerContainer: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
@@ -1574,6 +1538,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Bold',
     color: 'white',
+  },
+  resultsSection: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultsCount: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
   },
   foodListContainer: {
     paddingHorizontal: theme.spacing.lg,
@@ -1822,9 +1805,6 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
     marginBottom: theme.spacing.lg,
   },
-  filterOptions: {
-    gap: theme.spacing.sm,
-  },
   filterOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1835,6 +1815,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.outline,
     backgroundColor: theme.colors.surface,
+    marginBottom: theme.spacing.sm,
   },
   filterOptionSelected: {
     borderColor: theme.colors.primary,
@@ -1854,68 +1835,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: theme.spacing.md,
   },
-  priceInputContainer: {
-    flex: 1,
-  },
-  priceLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurfaceVariant,
-    marginBottom: theme.spacing.xs,
-  },
   priceInput: {
+    flex: 1,
     marginBottom: 0,
   },
-  priceSeparator: {
+  priceRangeSeparator: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
-    marginTop: 20,
   },
-  sliderContainer: {
-    gap: theme.spacing.md,
-  },
-  sliderValue: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.primary,
-    textAlign: 'center',
-  },
-  sliderOptions: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  sliderOption: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-  },
-  sliderOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  sliderOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  sliderOptionTextSelected: {
-    color: 'white',
-  },
-  ratingOptions: {
-    gap: theme.spacing.sm,
-  },
-  chipContainer: {
+  distanceOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
   },
-  chip: {
+  distanceOption: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.md,
@@ -1923,16 +1857,116 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.outline,
     backgroundColor: theme.colors.surface,
   },
-  chipSelected: {
+  distanceOptionSelected: {
     borderColor: theme.colors.primary,
     backgroundColor: theme.colors.primary,
   },
-  chipText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
+  distanceOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
     color: theme.colors.onSurface,
   },
-  chipTextSelected: {
+  distanceOptionTextSelected: {
+    color: 'white',
+  },
+  ratingOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  ratingOption: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  ratingOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  ratingOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+  },
+  ratingOptionTextSelected: {
+    color: 'white',
+  },
+  prepTimeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  prepTimeOption: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  prepTimeOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  prepTimeOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+  },
+  prepTimeOptionTextSelected: {
+    color: 'white',
+  },
+  cuisineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  cuisineOption: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  cuisineOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  cuisineOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+  },
+  cuisineOptionTextSelected: {
+    color: 'white',
+  },
+  dietaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  dietaryOption: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  dietaryOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  dietaryOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+  },
+  dietaryOptionTextSelected: {
     color: 'white',
   },
   filterActions: {
