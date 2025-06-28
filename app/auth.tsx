@@ -79,7 +79,7 @@ export default function AuthScreen() {
 
   const fillUserCredentials = () => {
     setFormData({
-      email: 'bala@example.com',
+      email: 'bala@homefood.com',
       password: 'pass123',
       name: '',
       phone: '',

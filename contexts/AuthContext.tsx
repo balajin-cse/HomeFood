@@ -125,6 +125,80 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
+      // Check if user already exists by trying to sign in first
+      const { data: existingSession } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password: userData.password,
+      });
+
+      if (existingSession.user) {
+        console.log('✅ User already exists, signing in instead');
+        await loadUserProfile(existingSession.user);
+        return true;
+      }
+    } catch (error) {
+      // User doesn't exist, continue with registration
+      console.log('User does not exist, proceeding with registration');
+    }
+
+    try {
+      console.log('📝 Attempting registration for:', userData.email);
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            phone: userData.phone,
+            is_cook: userData.isCook,
+          },
+        },
+      });
+
+      if (error && !error.message.includes('already registered')) {
+        console.error('❌ Registration error:', error.message);
+        return false;
+      }
+
+      if (data.user || error?.message.includes('already registered')) {
+        // Handle both new user and existing user cases
+        const user = data.user;
+        if (user) {
+          console.log('✅ Registration successful for user:', user.email);
+          // Update profile with additional info
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              email: userData.email,
+              name: userData.name,
+              phone: userData.phone,
+              is_cook: userData.isCook,
+              profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+            });
+
+          if (profileError) {
+            console.error('❌ Profile update error:', profileError.message);
+          }
+
+          await loadUserProfile(user);
+        } else {
+          // User already exists, try to sign in
+          console.log('User already exists, attempting sign in...');
+          return await login(userData.email, userData.password);
+        }
+        return true;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Registration exception:', error);
+      return false;
+    }
+  };
+
+  const register_old = async (userData: RegisterData): Promise<boolean> => {
+    try {
       console.log('📝 Attempting registration for:', userData.email);
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
