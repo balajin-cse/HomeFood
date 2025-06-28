@@ -9,19 +9,22 @@ import {
 import { Card, Chip, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '@/constants/theme';
 
 interface Order {
-  id: string;
+  orderId: string;
   trackingNumber: string;
-  foodTitle: string;
+  items: any[];
   cookName: string;
-  quantity: number;
   totalPrice: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
-  orderDate: Date;
+  quantity: number;
+  status: 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'delivered' | 'cancelled';
+  orderDate: string;
   deliveryTime: string;
-  address: string;
+  deliveryAddress: string;
+  paymentMethod: string;
+  deliveryInstructions?: string;
 }
 
 export default function OrdersScreen() {
@@ -32,58 +35,55 @@ export default function OrdersScreen() {
     loadOrders();
   }, []);
 
-  const loadOrders = () => {
-    // Enhanced mock data with tracking numbers
-    const mockOrders: Order[] = [
-      {
-        id: '1',
-        trackingNumber: 'HF12345678',
-        foodTitle: 'Homemade Pasta Carbonara',
-        cookName: 'Maria Rodriguez',
-        quantity: 2,
-        totalPrice: 33.98,
-        status: 'preparing',
-        orderDate: new Date(),
-        deliveryTime: '12:30 PM - 1:00 PM',
-        address: '123 Main St, San Francisco, CA',
-      },
-      {
-        id: '2',
-        trackingNumber: 'HF87654321',
-        foodTitle: 'Fresh Avocado Toast',
-        cookName: 'Sarah Johnson',
-        quantity: 1,
-        totalPrice: 15.49,
-        status: 'delivered',
-        orderDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        deliveryTime: '8:00 AM - 8:30 AM',
-        address: '123 Main St, San Francisco, CA',
-      },
-      {
-        id: '3',
-        trackingNumber: 'HF11223344',
-        foodTitle: 'Pan-Seared Salmon',
-        cookName: 'David Chen',
-        quantity: 1,
-        totalPrice: 28.49,
-        status: 'delivered',
-        orderDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        deliveryTime: '6:00 PM - 6:30 PM',
-        address: '123 Main St, San Francisco, CA',
-      },
-    ];
-    setOrders(mockOrders);
+  const loadOrders = async () => {
+    try {
+      // Load orders from AsyncStorage
+      const storedOrders = await AsyncStorage.getItem('orderHistory');
+      if (storedOrders) {
+        const parsedOrders = JSON.parse(storedOrders);
+        setOrders(parsedOrders);
+      } else {
+        // Fallback to mock data if no stored orders
+        const mockOrders: Order[] = [
+          {
+            orderId: 'ORD1234567890',
+            trackingNumber: 'HF12345678',
+            items: [
+              {
+                id: '1',
+                title: 'Homemade Pasta Carbonara',
+                cookName: 'Maria Rodriguez',
+                price: 16.99,
+                quantity: 2,
+              }
+            ],
+            cookName: 'Maria Rodriguez',
+            totalPrice: 40.47,
+            quantity: 2,
+            status: 'preparing',
+            orderDate: new Date().toISOString(),
+            deliveryTime: '12:30 PM - 1:00 PM',
+            deliveryAddress: '123 Main St, San Francisco, CA',
+            paymentMethod: 'Visa ending in 4242',
+          },
+        ];
+        setOrders(mockOrders);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
   };
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
-        return '#FF9800';
       case 'confirmed':
+        return '#FF9800';
       case 'preparing':
         return theme.colors.primary;
       case 'ready':
         return theme.colors.secondary;
+      case 'picked_up':
+        return '#2196F3';
       case 'delivered':
         return '#4CAF50';
       case 'cancelled':
@@ -95,14 +95,14 @@ export default function OrdersScreen() {
 
   const getStatusText = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
-        return 'Pending Confirmation';
       case 'confirmed':
-        return 'Confirmed';
+        return 'Order Confirmed';
       case 'preparing':
         return 'Being Prepared';
       case 'ready':
         return 'Ready for Pickup';
+      case 'picked_up':
+        return 'Out for Delivery';
       case 'delivered':
         return 'Delivered';
       case 'cancelled':
@@ -116,9 +116,9 @@ export default function OrdersScreen() {
     router.push({
       pathname: '/order-tracking',
       params: {
-        orderId: order.id,
+        orderId: order.orderId,
         trackingNumber: order.trackingNumber,
-        foodTitle: order.foodTitle,
+        foodTitle: order.items[0]?.title || 'Your Order',
         cookName: order.cookName,
         quantity: order.quantity.toString(),
         totalPrice: order.totalPrice.toString(),
@@ -126,8 +126,13 @@ export default function OrdersScreen() {
     });
   };
 
+  const handleReorder = (order: Order) => {
+    // Navigate back to the food item or cook's menu
+    router.push('/(tabs)');
+  };
+
   const activeOrders = orders.filter(order => 
-    ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)
+    ['confirmed', 'preparing', 'ready', 'picked_up'].includes(order.status)
   );
 
   const orderHistory = orders.filter(order => 
@@ -171,13 +176,25 @@ export default function OrdersScreen() {
                 : 'No order history'
               }
             </Text>
+            {selectedTab === 'active' && (
+              <Button
+                mode="contained"
+                onPress={() => router.push('/(tabs)')}
+                style={styles.startOrderingButton}
+              >
+                Start Ordering
+              </Button>
+            )}
           </View>
         ) : (
           displayOrders.map((order) => (
-            <Card key={order.id} style={styles.orderCard}>
+            <Card key={order.orderId} style={styles.orderCard}>
               <View style={styles.orderHeader}>
                 <View style={styles.orderInfo}>
-                  <Text style={styles.orderTitle}>{order.foodTitle}</Text>
+                  <Text style={styles.orderTitle}>
+                    {order.items[0]?.title || 'Order'} 
+                    {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                  </Text>
                   <Text style={styles.cookName}>by {order.cookName}</Text>
                   <Text style={styles.trackingNumber}>#{order.trackingNumber}</Text>
                 </View>
@@ -191,8 +208,12 @@ export default function OrdersScreen() {
 
               <View style={styles.orderDetails}>
                 <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Order ID:</Text>
+                  <Text style={styles.metaValue}>{order.orderId}</Text>
+                </View>
+                <View style={styles.orderMeta}>
                   <Text style={styles.metaLabel}>Quantity:</Text>
-                  <Text style={styles.metaValue}>{order.quantity}</Text>
+                  <Text style={styles.metaValue}>{order.quantity} items</Text>
                 </View>
                 <View style={styles.orderMeta}>
                   <Text style={styles.metaLabel}>Total:</Text>
@@ -201,7 +222,7 @@ export default function OrdersScreen() {
                 <View style={styles.orderMeta}>
                   <Text style={styles.metaLabel}>Order Date:</Text>
                   <Text style={styles.metaValue}>
-                    {format(order.orderDate, 'MMM dd, yyyy • h:mm a')}
+                    {format(new Date(order.orderDate), 'MMM dd, yyyy • h:mm a')}
                   </Text>
                 </View>
                 <View style={styles.orderMeta}>
@@ -210,7 +231,7 @@ export default function OrdersScreen() {
                 </View>
                 <View style={styles.orderMeta}>
                   <Text style={styles.metaLabel}>Address:</Text>
-                  <Text style={styles.metaValue}>{order.address}</Text>
+                  <Text style={styles.metaValue}>{order.deliveryAddress}</Text>
                 </View>
               </View>
 
@@ -238,7 +259,7 @@ export default function OrdersScreen() {
                   <>
                     <Button
                       mode="outlined"
-                      onPress={() => {/* Handle reorder */}}
+                      onPress={() => handleReorder(order)}
                       style={styles.actionButton}
                     >
                       Order Again
@@ -251,6 +272,16 @@ export default function OrdersScreen() {
                       Write Review
                     </Button>
                   </>
+                )}
+
+                {selectedTab === 'history' && order.status === 'cancelled' && (
+                  <Button
+                    mode="outlined"
+                    onPress={() => handleReorder(order)}
+                    style={styles.actionButton}
+                  >
+                    Order Again
+                  </Button>
                 )}
               </View>
             </Card>
@@ -325,6 +356,10 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
     opacity: 0.6,
     fontFamily: 'Inter-Regular',
+    marginBottom: 20,
+  },
+  startOrderingButton: {
+    paddingHorizontal: 20,
   },
   orderCard: {
     marginBottom: 15,
@@ -385,6 +420,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     fontFamily: 'Inter-Medium',
+    flex: 1,
+    textAlign: 'right',
   },
   orderActions: {
     flexDirection: 'row',

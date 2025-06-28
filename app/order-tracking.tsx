@@ -51,12 +51,10 @@ export default function OrderTrackingScreen() {
   }, []);
 
   const loadOrderDetails = () => {
-    // Generate mock order details with tracking number
-    const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
-    
+    // Use params to create order details
     const mockOrder: OrderDetails = {
       id: params.orderId as string || '1',
-      trackingNumber,
+      trackingNumber: params.trackingNumber as string || `HF${Date.now().toString().slice(-8)}`,
       foodTitle: params.foodTitle as string || 'Homemade Pasta Carbonara',
       cookName: params.cookName as string || 'Maria Rodriguez',
       cookPhone: '+1 (555) 123-4567',

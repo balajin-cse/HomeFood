@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { useCart } from '@/contexts/CartContext';
 import { useLocation } from '@/contexts/LocationContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 
 interface CartData {
@@ -31,11 +32,13 @@ interface CartData {
 export default function CheckoutScreen() {
   const { cartItems, cartTotal, clearCart } = useCart();
   const { address } = useLocation();
+  const { user } = useAuth();
   const params = useLocalSearchParams();
   const [selectedAddress, setSelectedAddress] = useState('home');
   const [selectedPayment, setSelectedPayment] = useState('card1');
   const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('asap');
   const [cartData, setCartData] = useState<CartData | null>(null);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   useEffect(() => {
     // Load cart data from params if available, otherwise use current cart
@@ -79,43 +82,105 @@ export default function CheckoutScreen() {
     { id: 'dinner', label: 'Dinner Time', time: '6:00 PM - 7:00 PM' },
   ];
 
-  const handlePlaceOrder = () => {
-    if (!cartData || cartData.items.length === 0) {
-      Alert.alert('Error', 'No items in cart');
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      Alert.alert('Authentication Required', 'Please log in to place an order.');
+      router.push('/auth');
       return;
     }
 
-    // Generate tracking number and order details
-    const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
-    const orderId = Date.now().toString();
-    
-    // Clear the cart after successful order
-    clearCart();
-    
-    Alert.alert(
-      'Order Placed Successfully!',
-      `Your order has been placed and confirmed.\n\nTracking Number: ${trackingNumber}\n\nYou can track your order progress in real-time.`,
-      [
-        { 
-          text: 'Track Order', 
-          onPress: () => router.push({
-            pathname: '/order-tracking',
-            params: {
-              orderId,
-              trackingNumber,
-              foodTitle: cartData.items[0].title,
-              cookName: cartData.items[0].cookName,
-              quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0).toString(),
-              totalPrice: cartData.total.toString(),
+    if (!cartData || cartData.items.length === 0) {
+      Alert.alert('Empty Cart', 'No items in cart to place order.');
+      return;
+    }
+
+    setIsPlacingOrder(true);
+
+    try {
+      // Simulate order processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Generate order details
+      const orderId = `ORD${Date.now()}`;
+      const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
+      
+      // Get selected address and payment method
+      const selectedAddressData = addresses.find(addr => addr.id === selectedAddress);
+      const selectedPaymentData = paymentMethods.find(payment => payment.id === selectedPayment);
+      const selectedTimeData = deliveryTimes.find(time => time.id === selectedDeliveryTime);
+
+      // Create order object for tracking
+      const orderData = {
+        orderId,
+        trackingNumber,
+        items: cartData.items,
+        cookName: cartData.items[0]?.cookName || 'Unknown Cook',
+        totalPrice: cartData.total,
+        quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0),
+        deliveryAddress: selectedAddressData?.address || 'Unknown Address',
+        paymentMethod: selectedPaymentData?.label || 'Unknown Payment',
+        deliveryTime: selectedTimeData?.time || 'ASAP',
+        deliveryInstructions: cartData.deliveryInstructions,
+        orderDate: new Date().toISOString(),
+        status: 'confirmed'
+      };
+
+      // Store order in local storage for order history
+      try {
+        const existingOrders = await import('@react-native-async-storage/async-storage').then(
+          module => module.default.getItem('orderHistory')
+        );
+        const orders = existingOrders ? JSON.parse(existingOrders) : [];
+        orders.unshift(orderData); // Add to beginning of array
+        
+        await import('@react-native-async-storage/async-storage').then(
+          module => module.default.setItem('orderHistory', JSON.stringify(orders))
+        );
+      } catch (storageError) {
+        console.error('Error saving order to history:', storageError);
+      }
+
+      // Clear the cart after successful order
+      clearCart();
+      
+      // Show success message and navigate to tracking
+      Alert.alert(
+        'Order Placed Successfully! 🎉',
+        `Your order has been confirmed and is being prepared.\n\nOrder ID: ${orderId}\nTracking: ${trackingNumber}\n\nEstimated delivery: ${selectedTimeData?.time || '30-45 min'}`,
+        [
+          { 
+            text: 'Track Order', 
+            onPress: () => {
+              router.replace({
+                pathname: '/order-tracking',
+                params: {
+                  orderId,
+                  trackingNumber,
+                  foodTitle: cartData.items[0]?.title || 'Your Order',
+                  cookName: cartData.items[0]?.cookName || 'Cook',
+                  quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0).toString(),
+                  totalPrice: cartData.total.toString(),
+                }
+              });
             }
-          })
-        },
-        { 
-          text: 'View Orders', 
-          onPress: () => router.replace('/(tabs)/orders') 
-        }
-      ]
-    );
+          },
+          { 
+            text: 'View Orders', 
+            onPress: () => router.replace('/(tabs)/orders') 
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('Error placing order:', error);
+      Alert.alert(
+        'Order Failed',
+        'There was an error placing your order. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   if (!cartData || cartData.items.length === 0) {
@@ -306,8 +371,9 @@ export default function CheckoutScreen() {
       {/* Bottom Action */}
       <View style={styles.bottomAction}>
         <Button
-          title={`Place Order ${String.fromCharCode(8226)} $${cartData.total.toFixed(2)}`}
+          title={isPlacingOrder ? 'Placing Order...' : `Place Order ${String.fromCharCode(8226)} $${cartData.total.toFixed(2)}`}
           onPress={handlePlaceOrder}
+          disabled={isPlacingOrder}
           size="large"
           style={styles.placeOrderButton}
         />
