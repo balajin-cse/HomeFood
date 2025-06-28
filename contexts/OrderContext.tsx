@@ -269,7 +269,6 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       throw error;
     }
   };
-      };
 
   const getOrdersByStatus = (status: Order['status']): Order[] => {
     return orders.filter(order => order.status === status);
