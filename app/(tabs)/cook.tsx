@@ -104,7 +104,7 @@ export default function CookScreen() {
     // Enhanced mock cook data with detailed profiles
     const mockCooks: CookProfile[] = [
       {
-        id: 'ck-maria',
+        id: '550e8400-e29b-41d4-a716-446655440001',
         name: 'Maria Rodriguez',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -124,7 +124,7 @@ export default function CookScreen() {
         isOnline: true,
       },
       {
-        id: 'ck-sarah',
+        id: '550e8400-e29b-41d4-a716-446655440002',
         name: 'Sarah Johnson',
         avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.7,
@@ -144,7 +144,7 @@ export default function CookScreen() {
         isOnline: false,
       },
       {
-        id: 'ck-david',
+        id: '550e8400-e29b-41d4-a716-446655440003',
         name: 'David Chen',
         avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,
@@ -164,7 +164,7 @@ export default function CookScreen() {
         isOnline: true,
       },
       {
-        id: 'ck-kenji',
+        id: '550e8400-e29b-41d4-a716-446655440004',
         name: 'Kenji Tanaka',
         avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -184,7 +184,7 @@ export default function CookScreen() {
         isOnline: true,
       },
       {
-        id: 'ck-elena',
+        id: '550e8400-e29b-41d4-a716-446655440005',
         name: 'Elena Papadopoulos',
         avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.6,
@@ -204,7 +204,7 @@ export default function CookScreen() {
         isOnline: false,
       },
       {
-        id: 'ck-marcus',
+        id: '550e8400-e29b-41d4-a716-446655440006',
         name: 'Marcus Campbell',
         avatar: 'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,

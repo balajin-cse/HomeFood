@@ -103,7 +103,7 @@ export default function FoodDetailScreen() {
     // Mock cook profiles data - in a real app, this would come from an API
     const mockCooks: { [key: string]: CookProfile } = {
       'ck-maria': {
-        id: 'ck-maria',
+        id: '550e8400-e29b-41d4-a716-446655440001',
         name: 'Maria Rodriguez',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -120,7 +120,7 @@ export default function FoodDetailScreen() {
         distance: 1.2,
       },
       'ck-sarah': {
-        id: 'ck-sarah',
+        id: '550e8400-e29b-41d4-a716-446655440002',
         name: 'Sarah Johnson',
         avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.7,
@@ -137,7 +137,7 @@ export default function FoodDetailScreen() {
         distance: 0.8,
       },
       'ck-david': {
-        id: 'ck-david',
+        id: '550e8400-e29b-41d4-a716-446655440003',
         name: 'David Chen',
         avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,
@@ -154,7 +154,7 @@ export default function FoodDetailScreen() {
         distance: 2.1,
       },
       'ck-kenji': {
-        id: 'ck-kenji',
+        id: '550e8400-e29b-41d4-a716-446655440004',
         name: 'Kenji Tanaka',
         avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
