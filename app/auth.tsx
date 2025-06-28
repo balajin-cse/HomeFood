@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 
 export default function AuthScreen() {
-  const { login, register } = useAuth();
+  const { login, register, createTestUsers } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +87,28 @@ export default function AuthScreen() {
     } catch (error: any) {
       console.error('❌ Authentication error:', error);
       setError(error.message || 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTestUsers = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await createTestUsers();
+      if (result.success) {
+        Alert.alert(
+          'Test Users Created!',
+          'Demo users have been created. You can now log in with the test credentials.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        setError(result.error || 'Failed to create test users');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to create test users');
     } finally {
       setLoading(false);
     }
@@ -165,6 +187,21 @@ export default function AuthScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
+
+          {/* Demo Setup */}
+          <View style={styles.setupSection}>
+            <Text style={styles.setupTitle}>First Time Setup</Text>
+            <Text style={styles.setupText}>
+              Create demo users for testing the app:
+            </Text>
+            <Button
+              title={loading ? 'Creating Users...' : 'Create Demo Users'}
+              onPress={handleCreateTestUsers}
+              disabled={loading}
+              variant="outline"
+              style={styles.setupButton}
+            />
+          </View>
 
           {/* Demo Credentials */}
           {isLogin && (
@@ -380,6 +417,31 @@ const styles = StyleSheet.create({
     color: theme.colors.error,
     textAlign: 'center',
   },
+  setupSection: {
+    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.primary + '10',
+    borderColor: theme.colors.primary + '30',
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.md,
+  },
+  setupTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  setupText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  setupButton: {
+    alignSelf: 'center',
+  },
   demoCredentials: {
     marginBottom: theme.spacing.lg,
     padding: theme.spacing.md,
@@ -508,4 +570,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
-});
+});</parameter>

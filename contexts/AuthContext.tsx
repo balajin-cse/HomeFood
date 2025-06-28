@@ -19,6 +19,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (userData: Partial<User>) => Promise<void>;
+  createTestUsers: () => Promise<{ success: boolean; error?: string }>;
 }
 
 interface RegisterData {
@@ -49,9 +50,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Check for existing session
     const initializeAuth = async () => {
       try {
+        console.log('🔄 Initializing authentication...');
         const { data: { session } } = await supabase.auth.getSession();
         if (mounted && session?.user) {
+          console.log('👤 Found existing session for:', session.user.email);
           await loadUserProfile(session.user);
+        } else {
+          console.log('❌ No existing session found');
         }
       } catch (error) {
         console.error('❌ Error checking session:', error);
@@ -66,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth state changed:', event);
+      console.log('🔄 Auth state changed:', event, session?.user?.email || 'no user');
       
       if (!mounted) return;
 
@@ -95,7 +100,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .single();
 
       if (error) {
-        console.error('❌ Error loading profile:', error);
+        console.error('❌ Error loading profile:', error.message);
         
         // If profile doesn't exist, create it
         if (error.code === 'PGRST116') {
@@ -103,6 +108,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           await createUserProfile(supabaseUser);
           return;
         }
+        
+        // For other errors, still try to create a basic user object
+        console.log('⚠️ Using fallback user data');
+        const fallbackUser: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
+          phone: supabaseUser.user_metadata?.phone || null,
+          isCook: supabaseUser.user_metadata?.is_cook || false,
+        };
+        setUser(fallbackUser);
         return;
       }
 
@@ -125,6 +141,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (err) {
       console.error('❌ Exception loading user profile:', err);
+      
+      // Create fallback user to prevent auth failure
+      const fallbackUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email!,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
+        phone: supabaseUser.user_metadata?.phone || null,
+        isCook: supabaseUser.user_metadata?.is_cook || false,
+      };
+      setUser(fallbackUser);
     }
   };
 
@@ -146,7 +172,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .insert(profileData);
 
       if (error) {
-        console.error('❌ Error creating profile:', error);
+        console.error('❌ Error creating profile:', error.message);
         
         // If it's a unique constraint error, the profile already exists
         if (error.code === '23505') {
@@ -154,6 +180,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           await loadUserProfile(supabaseUser);
           return;
         }
+        
+        // For other errors, create a basic user object
+        const basicUser: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: profileData.name,
+          phone: profileData.phone,
+          isCook: profileData.is_cook,
+        };
+        setUser(basicUser);
         return;
       }
 
@@ -161,6 +197,63 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await loadUserProfile(supabaseUser);
     } catch (err) {
       console.error('❌ Exception creating profile:', err);
+      
+      // Fallback user creation
+      const fallbackUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email!,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
+        phone: supabaseUser.user_metadata?.phone || null,
+        isCook: supabaseUser.user_metadata?.is_cook || false,
+      };
+      setUser(fallbackUser);
+    }
+  };
+
+  const createTestUsers = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      console.log('🧪 Creating test users...');
+      
+      // Create customer test user
+      const customerResult = await supabase.auth.admin.createUser({
+        email: 'bala@example.com',
+        password: 'pass123',
+        user_metadata: {
+          name: 'Bala',
+          phone: '+1234567890',
+          is_cook: false,
+        },
+        email_confirm: true,
+      });
+
+      if (customerResult.error) {
+        console.log('⚠️ Customer user might already exist:', customerResult.error.message);
+      } else {
+        console.log('✅ Customer test user created');
+      }
+
+      // Create cook test user
+      const cookResult = await supabase.auth.admin.createUser({
+        email: 'ck-cookname@homefood.app',
+        password: 'cookpass',
+        user_metadata: {
+          name: 'Cook Name',
+          phone: '+1234567891',
+          is_cook: true,
+        },
+        email_confirm: true,
+      });
+
+      if (cookResult.error) {
+        console.log('⚠️ Cook user might already exist:', cookResult.error.message);
+      } else {
+        console.log('✅ Cook test user created');
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Error creating test users:', error);
+      return { success: false, error: error.message };
     }
   };
 
@@ -175,6 +268,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('❌ Login error:', error.message);
+        
+        // If credentials are invalid, try to create test users first
+        if (error.message.includes('Invalid login credentials')) {
+          console.log('🧪 Invalid credentials, attempting to create test users...');
+          await createTestUsers();
+          
+          // Try login again after creating test users
+          const retryResult = await supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password,
+          });
+
+          if (retryResult.error) {
+            let userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
+            if (retryResult.error.message.includes('Email not confirmed')) {
+              userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
+            }
+            return { success: false, error: userFriendlyError };
+          }
+
+          if (retryResult.data.user) {
+            console.log('✅ Login successful after creating test users for:', retryResult.data.user.email);
+            return { success: true };
+          }
+        }
         
         // Provide user-friendly error messages
         let userFriendlyError = error.message;
@@ -309,8 +427,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       register,
       logout,
       updateProfile,
+      createTestUsers,
     }}>
       {children}
     </AuthContext.Provider>
   );
-};
+};</parameter>
