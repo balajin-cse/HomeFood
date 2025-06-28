@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 
 export default function CookRegistrationScreen() {
-  const { user, updateProfile } = useAuth();
+  const { user, register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     businessName: '',
@@ -29,6 +29,8 @@ export default function CookRegistrationScreen() {
     phone: user?.phone || '',
     certifications: '',
     availability: '',
+    fullName: user?.name || '',
+    email: user?.email || '',
   });
 
   const [documents, setDocuments] = useState({
@@ -39,7 +41,7 @@ export default function CookRegistrationScreen() {
   });
 
   const handleSubmit = async () => {
-    if (!formData.businessName || !formData.description || !formData.specialties) {
+    if (!formData.businessName || !formData.description || !formData.specialties || !formData.fullName) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -47,14 +49,41 @@ export default function CookRegistrationScreen() {
     setLoading(true);
     
     try {
+      // If user is not logged in, register them as a cook
+      if (!user) {
+        const registrationData = {
+          email: formData.email,
+          password: 'cookpass', // Default password for cooks
+          name: formData.fullName,
+          phone: formData.phone,
+          isCook: true,
+        };
+
+        const success = await register(registrationData);
+        if (!success) {
+          Alert.alert('Error', 'Failed to create cook account. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
       // Simulate application submission
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       Alert.alert(
         'Application Submitted!',
-        'Thank you for applying to become a home cook. We will review your application and get back to you within 3-5 business days.',
+        `Thank you for applying to become a home cook! Your cook credentials are:\n\nEmail: ck-${formData.fullName.toLowerCase().split(' ')[0]}@homefood.app\nPassword: cookpass\n\nWe will review your application and get back to you within 3-5 business days. You can now log in with these credentials to manage your kitchen.`,
         [
-          { text: 'OK', onPress: () => router.back() }
+          { 
+            text: 'Login Now', 
+            onPress: () => {
+              router.replace('/auth');
+            }
+          },
+          { 
+            text: 'OK', 
+            onPress: () => router.back() 
+          }
         ]
       );
     } catch (error) {
@@ -122,6 +151,26 @@ export default function CookRegistrationScreen() {
         {/* Application Form */}
         <Card style={styles.formCard}>
           <Text style={styles.sectionTitle}>Application Details</Text>
+          
+          {!user && (
+            <>
+              <Input
+                label="Full Name *"
+                placeholder="Enter your full name"
+                value={formData.fullName}
+                onChangeText={(text) => updateFormData('fullName', text)}
+              />
+
+              <Input
+                label="Email Address *"
+                placeholder="Enter your email address"
+                value={formData.email}
+                onChangeText={(text) => updateFormData('email', text)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </>
+          )}
           
           <Input
             label="Business/Kitchen Name *"
@@ -229,6 +278,17 @@ export default function CookRegistrationScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </Card>
+
+        {/* Login Credentials Info */}
+        <Card style={styles.credentialsCard}>
+          <Text style={styles.credentialsTitle}>Cook Account Information</Text>
+          <Text style={styles.credentialsText}>
+            Upon approval, you will receive cook login credentials:
+            {'\n\n'}• Email: ck-{formData.fullName.toLowerCase().split(' ')[0] || 'yourname'}@homefood.app
+            {'\n'}• Password: cookpass
+            {'\n\n'}You can use these credentials to log in and manage your kitchen, add menu items, and handle orders.
+          </Text>
         </Card>
 
         {/* Terms */}
@@ -379,6 +439,23 @@ const styles = StyleSheet.create({
   uploadButtonUploaded: {
     backgroundColor: theme.colors.success,
     borderColor: theme.colors.success,
+  },
+  credentialsCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  credentialsTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+  },
+  credentialsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+    lineHeight: 20,
   },
   termsCard: {
     marginHorizontal: theme.spacing.lg,

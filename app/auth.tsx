@@ -67,6 +67,26 @@ export default function AuthScreen() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const fillCookCredentials = () => {
+    setFormData({
+      email: 'ck-maria@homefood.app',
+      password: 'cookpass',
+      name: '',
+      phone: '',
+      isCook: false,
+    });
+  };
+
+  const fillUserCredentials = () => {
+    setFormData({
+      email: 'bala@example.com',
+      password: 'pass123',
+      name: '',
+      phone: '',
+      isCook: false,
+    });
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -108,6 +128,27 @@ export default function AuthScreen() {
               }
             </Text>
           </View>
+
+          {/* Demo Credentials */}
+          {isLogin && (
+            <View style={styles.demoCredentials}>
+              <Text style={styles.demoTitle}>Demo Accounts:</Text>
+              <View style={styles.demoButtons}>
+                <TouchableOpacity 
+                  style={styles.demoButton}
+                  onPress={fillUserCredentials}
+                >
+                  <Text style={styles.demoButtonText}>Customer Login</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.demoButton}
+                  onPress={fillCookCredentials}
+                >
+                  <Text style={styles.demoButtonText}>Cook Login</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
 
           <View style={styles.form}>
             <Input
@@ -195,6 +236,21 @@ export default function AuthScreen() {
           </View>
         </Card>
 
+        {/* Cook Credentials Info */}
+        <Card style={styles.infoCard}>
+          <Text style={styles.infoTitle}>Cook Login Information</Text>
+          <Text style={styles.infoText}>
+            Available cook accounts:
+            {'\n\n'}• Maria Rodriguez: ck-maria@homefood.app
+            {'\n'}• Sarah Johnson: ck-sarah@homefood.app
+            {'\n'}• David Chen: ck-david@homefood.app
+            {'\n'}• Kenji Tanaka: ck-kenji@homefood.app
+            {'\n'}• Elena Papadopoulos: ck-elena@homefood.app
+            {'\n'}• Marcus Campbell: ck-marcus@homefood.app
+            {'\n\n'}All cook passwords: cookpass
+          </Text>
+        </Card>
+
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             By continuing, you agree to our Terms of Service and Privacy Policy
@@ -270,6 +326,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
+  demoCredentials: {
+    marginBottom: theme.spacing.lg,
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  demoTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+  },
+  demoButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  demoButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.sm,
+    alignItems: 'center',
+  },
+  demoButtonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+  },
   form: {
     gap: theme.spacing.lg,
   },
@@ -332,6 +418,23 @@ const styles = StyleSheet.create({
   switchModeLink: {
     color: theme.colors.primary,
     fontFamily: 'Inter-Medium',
+  },
+  infoCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+  },
+  infoText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+    lineHeight: 18,
   },
   footer: {
     paddingHorizontal: theme.spacing.lg,

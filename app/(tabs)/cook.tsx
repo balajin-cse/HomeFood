@@ -9,13 +9,15 @@ import {
   Image,
   Modal,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { FAB, Card, Button, TextInput, Chip } from 'react-native-paper';
-import { Star, Award, MapPin, Clock, Users, ChefHat, X, Plus, Eye } from 'lucide-react-native';
+import { Star, Award, MapPin, Clock, Users, ChefHat, X, Plus, Eye, Package, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface CookProfile {
   id: string;
@@ -53,6 +55,24 @@ interface MenuItem {
   image: string;
 }
 
+interface Order {
+  orderId: string;
+  trackingNumber: string;
+  items: any[];
+  cookId: string;
+  cookName: string;
+  customerName: string;
+  customerPhone: string;
+  totalPrice: number;
+  quantity: number;
+  status: 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'delivered' | 'cancelled';
+  orderDate: string;
+  deliveryTime: string;
+  deliveryAddress: string;
+  paymentMethod: string;
+  deliveryInstructions?: string;
+}
+
 export default function CookScreen() {
   const { user } = useAuth();
   const [cooks, setCooks] = useState<CookProfile[]>([]);
@@ -60,6 +80,9 @@ export default function CookScreen() {
   const [showCookProfile, setShowCookProfile] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [cookOrders, setCookOrders] = useState<Order[]>([]);
+  const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -72,13 +95,16 @@ export default function CookScreen() {
   useEffect(() => {
     loadCooks();
     loadMenuItems();
-  }, []);
+    if (user?.isCook) {
+      loadCookOrders();
+    }
+  }, [user]);
 
   const loadCooks = () => {
     // Enhanced mock cook data with detailed profiles
     const mockCooks: CookProfile[] = [
       {
-        id: '1',
+        id: 'ck-maria',
         name: 'Maria Rodriguez',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -98,7 +124,7 @@ export default function CookScreen() {
         isOnline: true,
       },
       {
-        id: '2',
+        id: 'ck-sarah',
         name: 'Sarah Johnson',
         avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.7,
@@ -118,7 +144,7 @@ export default function CookScreen() {
         isOnline: false,
       },
       {
-        id: '3',
+        id: 'ck-david',
         name: 'David Chen',
         avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,
@@ -138,7 +164,7 @@ export default function CookScreen() {
         isOnline: true,
       },
       {
-        id: '4',
+        id: 'ck-kenji',
         name: 'Kenji Tanaka',
         avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -158,7 +184,7 @@ export default function CookScreen() {
         isOnline: true,
       },
       {
-        id: '5',
+        id: 'ck-elena',
         name: 'Elena Papadopoulos',
         avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.6,
@@ -178,7 +204,7 @@ export default function CookScreen() {
         isOnline: false,
       },
       {
-        id: '6',
+        id: 'ck-marcus',
         name: 'Marcus Campbell',
         avatar: 'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,
@@ -201,28 +227,60 @@ export default function CookScreen() {
     setCooks(mockCooks);
   };
 
-  const loadMenuItems = () => {
-    // Mock data - replace with actual API call
-    const mockItems: MenuItem[] = [
-      {
-        id: '1',
-        title: 'Homemade Pasta Carbonara',
-        description: 'Fresh pasta with tomato sauce',
-        price: 12.99,
-        mealType: 'lunch',
-        availableQuantity: 5,
-        tags: ['Italian', 'Pasta'],
-        isActive: true,
-        cookId: user?.id || '1',
-        rating: 4.8,
-        totalReviews: 23,
-        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
-      },
-    ];
-    setMenuItems(mockItems);
+  const loadMenuItems = async () => {
+    try {
+      const storedItems = await AsyncStorage.getItem(`menuItems_${user?.id}`);
+      if (storedItems) {
+        setMenuItems(JSON.parse(storedItems));
+      } else {
+        // Default items for demo
+        const mockItems: MenuItem[] = [
+          {
+            id: '1',
+            title: 'Homemade Pasta Carbonara',
+            description: 'Fresh pasta with tomato sauce',
+            price: 12.99,
+            mealType: 'lunch',
+            availableQuantity: 5,
+            tags: ['Italian', 'Pasta'],
+            isActive: true,
+            cookId: user?.id || '1',
+            rating: 4.8,
+            totalReviews: 23,
+            image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
+          },
+        ];
+        setMenuItems(mockItems);
+      }
+    } catch (error) {
+      console.error('Error loading menu items:', error);
+    }
   };
 
-  const handleAddItem = () => {
+  const loadCookOrders = async () => {
+    try {
+      const storedOrders = await AsyncStorage.getItem('orderHistory');
+      if (storedOrders) {
+        const allOrders = JSON.parse(storedOrders);
+        // Filter orders for this cook
+        const cookSpecificOrders = allOrders.filter((order: Order) => 
+          order.cookId === user?.id || order.cookName === user?.name
+        );
+        setCookOrders(cookSpecificOrders);
+      }
+    } catch (error) {
+      console.error('Error loading cook orders:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCookOrders();
+    await loadMenuItems();
+    setRefreshing(false);
+  };
+
+  const handleAddItem = async () => {
     if (!newItem.title || !newItem.description || !newItem.price || !newItem.availableQuantity) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -243,7 +301,16 @@ export default function CookScreen() {
       image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
     };
 
-    setMenuItems(prev => [...prev, item]);
+    const updatedItems = [...menuItems, item];
+    setMenuItems(updatedItems);
+    
+    // Save to AsyncStorage
+    try {
+      await AsyncStorage.setItem(`menuItems_${user?.id}`, JSON.stringify(updatedItems));
+    } catch (error) {
+      console.error('Error saving menu items:', error);
+    }
+
     setNewItem({
       title: '',
       description: '',
@@ -256,12 +323,17 @@ export default function CookScreen() {
     Alert.alert('Success', 'Menu item added successfully!');
   };
 
-  const toggleItemStatus = (id: string) => {
-    setMenuItems(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, isActive: !item.isActive } : item
-      )
+  const toggleItemStatus = async (id: string) => {
+    const updatedItems = menuItems.map(item =>
+      item.id === id ? { ...item, isActive: !item.isActive } : item
     );
+    setMenuItems(updatedItems);
+    
+    try {
+      await AsyncStorage.setItem(`menuItems_${user?.id}`, JSON.stringify(updatedItems));
+    } catch (error) {
+      console.error('Error saving menu items:', error);
+    }
   };
 
   const handleCookPress = (cook: CookProfile) => {
@@ -276,6 +348,70 @@ export default function CookScreen() {
       pathname: '/(tabs)',
       params: { cookId }
     });
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      // Update order status in AsyncStorage
+      const storedOrders = await AsyncStorage.getItem('orderHistory');
+      if (storedOrders) {
+        const allOrders = JSON.parse(storedOrders);
+        const updatedOrders = allOrders.map((order: Order) =>
+          order.orderId === orderId ? { ...order, status: newStatus } : order
+        );
+        
+        await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
+        
+        // Update local state
+        const updatedCookOrders = cookOrders.map(order =>
+          order.orderId === orderId ? { ...order, status: newStatus } : order
+        );
+        setCookOrders(updatedCookOrders);
+        
+        Alert.alert('Success', `Order status updated to ${newStatus}`);
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      Alert.alert('Error', 'Failed to update order status');
+    }
+  };
+
+  const getStatusColor = (status: Order['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return '#FF9800';
+      case 'preparing':
+        return theme.colors.primary;
+      case 'ready':
+        return theme.colors.secondary;
+      case 'picked_up':
+        return '#2196F3';
+      case 'delivered':
+        return '#4CAF50';
+      case 'cancelled':
+        return '#F44336';
+      default:
+        return theme.colors.onSurface;
+    }
+  };
+
+  const getStatusText = (status: Order['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return 'Confirmed';
+      case 'preparing':
+        return 'Preparing';
+      case 'ready':
+        return 'Ready';
+      case 'picked_up':
+        return 'Picked Up';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
   };
 
   const renderStars = (rating: number, size: number = 14) => {
@@ -515,10 +651,100 @@ export default function CookScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Kitchen</Text>
-        <Text style={styles.headerSubtitle}>Manage your menu items</Text>
+        <Text style={styles.headerSubtitle}>Manage your menu and orders</Text>
+        
+        {/* Cook Dashboard Stats */}
+        <View style={styles.dashboardStats}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{menuItems.length}</Text>
+            <Text style={styles.statLabel}>Menu Items</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{cookOrders.filter(o => ['confirmed', 'preparing', 'ready'].includes(o.status)).length}</Text>
+            <Text style={styles.statLabel}>Active Orders</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => setShowOrdersModal(true)}
+          >
+            <Text style={styles.statValue}>{cookOrders.length}</Text>
+            <Text style={styles.statLabel}>Total Orders</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Active Orders Section */}
+        {cookOrders.filter(order => ['confirmed', 'preparing', 'ready'].includes(order.status)).length > 0 && (
+          <Card style={styles.activeOrdersCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Active Orders</Text>
+              <TouchableOpacity onPress={() => setShowOrdersModal(true)}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {cookOrders
+              .filter(order => ['confirmed', 'preparing', 'ready'].includes(order.status))
+              .slice(0, 3)
+              .map((order) => (
+                <View key={order.orderId} style={styles.orderItem}>
+                  <View style={styles.orderHeader}>
+                    <Text style={styles.orderTitle}>
+                      {order.items[0]?.title || 'Order'} 
+                      {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                    </Text>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+                      <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
+                    </View>
+                  </View>
+                  
+                  <Text style={styles.customerInfo}>
+                    Customer: {order.customerName} • ${order.totalPrice.toFixed(2)}
+                  </Text>
+                  
+                  <View style={styles.orderActions}>
+                    {order.status === 'confirmed' && (
+                      <Button
+                        mode="contained"
+                        onPress={() => handleUpdateOrderStatus(order.orderId, 'preparing')}
+                        style={styles.orderActionButton}
+                        compact
+                      >
+                        Start Preparing
+                      </Button>
+                    )}
+                    {order.status === 'preparing' && (
+                      <Button
+                        mode="contained"
+                        onPress={() => handleUpdateOrderStatus(order.orderId, 'ready')}
+                        style={styles.orderActionButton}
+                        compact
+                      >
+                        Mark Ready
+                      </Button>
+                    )}
+                    {order.status === 'ready' && (
+                      <Button
+                        mode="contained"
+                        onPress={() => handleUpdateOrderStatus(order.orderId, 'picked_up')}
+                        style={styles.orderActionButton}
+                        compact
+                      >
+                        Mark Picked Up
+                      </Button>
+                    )}
+                  </View>
+                </View>
+              ))}
+          </Card>
+        )}
+
         {showAddForm && (
           <Card style={styles.addForm}>
             <Text style={styles.formTitle}>Add New Menu Item</Text>
@@ -651,6 +877,99 @@ export default function CookScreen() {
         icon="plus"
         onPress={() => setShowAddForm(true)}
       />
+
+      {/* Orders Modal */}
+      <Modal
+        visible={showOrdersModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowOrdersModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>All Orders</Text>
+            <TouchableOpacity 
+              onPress={() => setShowOrdersModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <X size={24} color={theme.colors.onSurface} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {cookOrders.length === 0 ? (
+              <View style={styles.emptyOrders}>
+                <Package size={48} color={theme.colors.onSurfaceVariant} />
+                <Text style={styles.emptyOrdersTitle}>No Orders Yet</Text>
+                <Text style={styles.emptyOrdersText}>
+                  Orders from customers will appear here
+                </Text>
+              </View>
+            ) : (
+              cookOrders.map((order) => (
+                <Card key={order.orderId} style={styles.orderCard}>
+                  <View style={styles.orderCardContent}>
+                    <View style={styles.orderCardHeader}>
+                      <Text style={styles.orderCardTitle}>
+                        {order.items[0]?.title || 'Order'} 
+                        {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+                        <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
+                      </View>
+                    </View>
+                    
+                    <Text style={styles.orderCardCustomer}>
+                      Customer: {order.customerName}
+                    </Text>
+                    <Text style={styles.orderCardDetails}>
+                      Order #{order.trackingNumber} • ${order.totalPrice.toFixed(2)}
+                    </Text>
+                    <Text style={styles.orderCardDate}>
+                      {new Date(order.orderDate).toLocaleDateString()}
+                    </Text>
+                    
+                    {['confirmed', 'preparing', 'ready'].includes(order.status) && (
+                      <View style={styles.orderCardActions}>
+                        {order.status === 'confirmed' && (
+                          <Button
+                            mode="contained"
+                            onPress={() => handleUpdateOrderStatus(order.orderId, 'preparing')}
+                            style={styles.orderActionButton}
+                            compact
+                          >
+                            Start Preparing
+                          </Button>
+                        )}
+                        {order.status === 'preparing' && (
+                          <Button
+                            mode="contained"
+                            onPress={() => handleUpdateOrderStatus(order.orderId, 'ready')}
+                            style={styles.orderActionButton}
+                            compact
+                          >
+                            Mark Ready
+                          </Button>
+                        )}
+                        {order.status === 'ready' && (
+                          <Button
+                            mode="contained"
+                            onPress={() => handleUpdateOrderStatus(order.orderId, 'picked_up')}
+                            style={styles.orderActionButton}
+                            compact
+                          >
+                            Mark Picked Up
+                          </Button>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                </Card>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -681,10 +1000,97 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     fontFamily: 'Inter-Regular',
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  dashboardStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 20,
+  },
+  statCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    minWidth: 80,
+  },
+  statValue: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+    marginBottom: 5,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: 'white',
+    opacity: 0.9,
+    textAlign: 'center',
   },
   content: {
     flex: 1,
     padding: 20,
+  },
+  activeOrdersCard: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  orderItem: {
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
+  },
+  orderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  orderTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    flex: 1,
+    marginRight: 10,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+  },
+  customerInfo: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: 10,
+  },
+  orderActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  orderActionButton: {
+    flex: 1,
   },
   cooksGrid: {
     gap: theme.spacing.lg,
@@ -925,12 +1331,6 @@ const styles = StyleSheet.create({
   cookBadges: {
     marginBottom: theme.spacing.xl,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.md,
-  },
   badgesList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1098,5 +1498,62 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: theme.colors.primary,
+  },
+  emptyOrders: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+    gap: theme.spacing.lg,
+  },
+  emptyOrdersTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  emptyOrdersText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  orderCard: {
+    marginBottom: 15,
+  },
+  orderCardContent: {
+    padding: 15,
+  },
+  orderCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  orderCardTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    flex: 1,
+    marginRight: 10,
+  },
+  orderCardCustomer: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+    marginBottom: 5,
+  },
+  orderCardDetails: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: 5,
+  },
+  orderCardDate: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: 15,
+  },
+  orderCardActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
 });
