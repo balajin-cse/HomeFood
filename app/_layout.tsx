@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LocationProvider } from '@/contexts/LocationContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { CartProvider } from '@/contexts/CartContext';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
@@ -35,24 +36,27 @@ export default function RootLayout() {
     <AuthProvider>
       <LocationProvider>
         <SubscriptionProvider>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
-            <Stack.Screen name="food-detail" options={{ headerShown: false }} />
-            <Stack.Screen name="checkout" options={{ headerShown: false }} />
-            <Stack.Screen name="subscription" options={{ headerShown: false }} />
-            <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
-            <Stack.Screen name="cook-registration" options={{ headerShown: false }} />
-            <Stack.Screen name="delivery-address" options={{ headerShown: false }} />
-            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
-            <Stack.Screen name="favorites" options={{ headerShown: false }} />
-            <Stack.Screen name="help-support" options={{ headerShown: false }} />
-            <Stack.Screen name="order-history" options={{ headerShown: false }} />
-            <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
-            <Stack.Screen name="terms-privacy" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
+          <CartProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="auth" options={{ headerShown: false }} />
+              <Stack.Screen name="food-detail" options={{ headerShown: false }} />
+              <Stack.Screen name="checkout" options={{ headerShown: false }} />
+              <Stack.Screen name="cart" options={{ headerShown: false }} />
+              <Stack.Screen name="subscription" options={{ headerShown: false }} />
+              <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
+              <Stack.Screen name="cook-registration" options={{ headerShown: false }} />
+              <Stack.Screen name="delivery-address" options={{ headerShown: false }} />
+              <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+              <Stack.Screen name="favorites" options={{ headerShown: false }} />
+              <Stack.Screen name="help-support" options={{ headerShown: false }} />
+              <Stack.Screen name="order-history" options={{ headerShown: false }} />
+              <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
+              <Stack.Screen name="terms-privacy" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+            <StatusBar style="auto" />
+          </CartProvider>
         </SubscriptionProvider>
       </LocationProvider>
     </AuthProvider>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,64 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { ArrowLeft, MapPin, CreditCard, Clock, Check } from 'lucide-react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ArrowLeft, MapPin, CreditCard, Clock, Check, Edit3 } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Input } from '@/components/ui/Input';
+import { useCart } from '@/contexts/CartContext';
+import { useLocation } from '@/contexts/LocationContext';
 import { theme } from '@/constants/theme';
 
+interface CartData {
+  items: any[];
+  deliveryInstructions: string;
+  subtotal: number;
+  deliveryFee: number;
+  serviceFee: number;
+  total: number;
+}
+
 export default function CheckoutScreen() {
+  const { cartItems, cartTotal, clearCart } = useCart();
+  const { address } = useLocation();
+  const params = useLocalSearchParams();
   const [selectedAddress, setSelectedAddress] = useState('home');
   const [selectedPayment, setSelectedPayment] = useState('card1');
   const [selectedDeliveryTime, setSelectedDeliveryTime] = useState('asap');
+  const [cartData, setCartData] = useState<CartData | null>(null);
+
+  useEffect(() => {
+    // Load cart data from params if available, otherwise use current cart
+    if (params.cartData) {
+      try {
+        const data = JSON.parse(params.cartData as string);
+        setCartData(data);
+      } catch (error) {
+        console.error('Error parsing cart data:', error);
+      }
+    } else if (cartItems.length > 0) {
+      // Use current cart items
+      const deliveryFee = 3.99;
+      const serviceFee = 2.50;
+      const total = cartTotal + deliveryFee + serviceFee;
+      
+      setCartData({
+        items: cartItems,
+        deliveryInstructions: '',
+        subtotal: cartTotal,
+        deliveryFee,
+        serviceFee,
+        total,
+      });
+    }
+  }, [params.cartData, cartItems, cartTotal]);
 
   const addresses = [
-    { id: 'home', label: 'Home', address: '123 Main Street, San Francisco, CA 94102' },
+    { id: 'home', label: 'Home', address: address || '123 Main Street, San Francisco, CA 94102' },
     { id: 'work', label: 'Work', address: '456 Market Street, San Francisco, CA 94105' },
   ];
 
@@ -36,20 +79,18 @@ export default function CheckoutScreen() {
     { id: 'dinner', label: 'Dinner Time', time: '6:00 PM - 7:00 PM' },
   ];
 
-  const orderItems = [
-    { id: '1', name: 'Homemade Pasta Carbonara', quantity: 2, price: 16.99 },
-    { id: '2', name: 'Artisan Avocado Toast', quantity: 1, price: 12.50 },
-  ];
-
-  const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const deliveryFee = 3.99;
-  const serviceFee = 2.50;
-  const total = subtotal + deliveryFee + serviceFee;
-
   const handlePlaceOrder = () => {
+    if (!cartData || cartData.items.length === 0) {
+      Alert.alert('Error', 'No items in cart');
+      return;
+    }
+
     // Generate tracking number and order details
     const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
     const orderId = Date.now().toString();
+    
+    // Clear the cart after successful order
+    clearCart();
     
     Alert.alert(
       'Order Placed Successfully!',
@@ -62,10 +103,10 @@ export default function CheckoutScreen() {
             params: {
               orderId,
               trackingNumber,
-              foodTitle: orderItems[0].name,
-              cookName: 'Maria Rodriguez',
-              quantity: orderItems[0].quantity.toString(),
-              totalPrice: total.toString(),
+              foodTitle: cartData.items[0].title,
+              cookName: cartData.items[0].cookName,
+              quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0).toString(),
+              totalPrice: cartData.total.toString(),
             }
           })
         },
@@ -76,6 +117,38 @@ export default function CheckoutScreen() {
       ]
     );
   };
+
+  if (!cartData || cartData.items.length === 0) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[theme.colors.primary, theme.colors.primaryDark]}
+          style={styles.header}
+        >
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft size={24} color="white" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Checkout</Text>
+          </View>
+        </LinearGradient>
+
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No items to checkout</Text>
+          <Text style={styles.emptyText}>Add items to your cart first</Text>
+          <Button
+            title="Go Shopping"
+            onPress={() => router.push('/(tabs)')}
+            style={styles.goShoppingButton}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -101,11 +174,16 @@ export default function CheckoutScreen() {
         {/* Order Items */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
-          {orderItems.map((item) => (
+          {cartData.items.map((item) => (
             <View key={item.id} style={styles.orderItem}>
+              <Image source={{ uri: item.image }} style={styles.itemImage} />
               <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemName} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.itemCook}>by {item.cookName}</Text>
                 <Text style={styles.itemQuantity}>Qty: {item.quantity}</Text>
+                {item.specialInstructions && (
+                  <Text style={styles.itemInstructions}>Note: {item.specialInstructions}</Text>
+                )}
               </View>
               <Text style={styles.itemPrice}>${(item.price * item.quantity).toFixed(2)}</Text>
             </View>
@@ -114,29 +192,31 @@ export default function CheckoutScreen() {
 
         {/* Delivery Address */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Delivery Address</Text>
-          {addresses.map((address) => (
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Delivery Address</Text>
+            <TouchableOpacity onPress={() => router.push('/delivery-address')}>
+              <Edit3 size={16} color={theme.colors.primary} />
+            </TouchableOpacity>
+          </View>
+          {addresses.map((addressOption) => (
             <TouchableOpacity
-              key={address.id}
+              key={addressOption.id}
               style={[
                 styles.optionItem,
-                selectedAddress === address.id && styles.optionItemSelected
+                selectedAddress === addressOption.id && styles.optionItemSelected
               ]}
-              onPress={() => setSelectedAddress(address.id)}
+              onPress={() => setSelectedAddress(addressOption.id)}
             >
               <MapPin size={20} color={theme.colors.primary} />
               <View style={styles.optionContent}>
-                <Text style={styles.optionLabel}>{address.label}</Text>
-                <Text style={styles.optionDescription}>{address.address}</Text>
+                <Text style={styles.optionLabel}>{addressOption.label}</Text>
+                <Text style={styles.optionDescription}>{addressOption.address}</Text>
               </View>
-              {selectedAddress === address.id && (
+              {selectedAddress === addressOption.id && (
                 <Check size={20} color={theme.colors.primary} />
               )}
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={styles.addButton}>
-            <Text style={styles.addButtonText}>+ Add New Address</Text>
-          </TouchableOpacity>
         </Card>
 
         {/* Payment Method */}
@@ -189,28 +269,36 @@ export default function CheckoutScreen() {
           ))}
         </Card>
 
+        {/* Delivery Instructions */}
+        {cartData.deliveryInstructions && (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>Delivery Instructions</Text>
+            <Text style={styles.instructionsText}>{cartData.deliveryInstructions}</Text>
+          </Card>
+        )}
+
         {/* Order Total */}
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>Order Total</Text>
           
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>${subtotal.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>${cartData.subtotal.toFixed(2)}</Text>
           </View>
           
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Delivery Fee</Text>
-            <Text style={styles.totalValue}>${deliveryFee.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>${cartData.deliveryFee.toFixed(2)}</Text>
           </View>
           
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Service Fee</Text>
-            <Text style={styles.totalValue}>${serviceFee.toFixed(2)}</Text>
+            <Text style={styles.totalValue}>${cartData.serviceFee.toFixed(2)}</Text>
           </View>
           
           <View style={[styles.totalRow, styles.totalRowFinal]}>
             <Text style={styles.totalLabelFinal}>Total</Text>
-            <Text style={styles.totalValueFinal}>${total.toFixed(2)}</Text>
+            <Text style={styles.totalValueFinal}>${cartData.total.toFixed(2)}</Text>
           </View>
         </Card>
       </ScrollView>
@@ -218,7 +306,7 @@ export default function CheckoutScreen() {
       {/* Bottom Action */}
       <View style={styles.bottomAction}>
         <Button
-          title={`Place Order • $${total.toFixed(2)}`}
+          title={`Place Order • $${cartData.total.toFixed(2)}`}
           onPress={handlePlaceOrder}
           size="large"
           style={styles.placeOrderButton}
@@ -267,8 +355,35 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: -theme.spacing.lg,
   },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.xl,
+  },
+  goShoppingButton: {
+    paddingHorizontal: theme.spacing.xl,
+  },
   section: {
     marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
   sectionTitle: {
@@ -279,11 +394,16 @@ const styles = StyleSheet.create({
   },
   orderItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.outline,
+    gap: theme.spacing.md,
+  },
+  itemImage: {
+    width: 60,
+    height: 60,
+    borderRadius: theme.borderRadius.md,
   },
   itemInfo: {
     flex: 1,
@@ -294,10 +414,23 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
     marginBottom: theme.spacing.xs,
   },
+  itemCook: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
   itemQuantity: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.xs,
+  },
+  itemInstructions: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    fontStyle: 'italic',
   },
   itemPrice: {
     fontSize: 16,
@@ -341,6 +474,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: theme.colors.primary,
+  },
+  instructionsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 20,
   },
   totalRow: {
     flexDirection: 'row',
