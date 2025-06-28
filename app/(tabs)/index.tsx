@@ -52,24 +52,317 @@ function CookKitchenInterface() {
       if (storedItems) {
         setMenuItems(JSON.parse(storedItems));
       } else {
-        // Default items for demo
-        const mockItems = [
-          {
-            id: '1',
-            title: 'Homemade Pasta Carbonara',
-            description: 'Fresh pasta with creamy sauce',
-            price: 16.99,
-            mealType: 'lunch',
-            availableQuantity: 5,
-            tags: ['Italian', 'Pasta'],
-            isActive: true,
-            cookId: user?.id || '1',
-            rating: 4.8,
-            totalReviews: 23,
-            image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
-          },
-        ];
+        // Default items for demo based on cook
+        let mockItems = [];
+        
+        if (user?.id === 'ck-maria' || user?.name === 'Maria Rodriguez') {
+          mockItems = [
+            {
+              id: '1',
+              title: 'Homemade Pasta Carbonara',
+              description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese',
+              price: 16.99,
+              mealType: 'lunch',
+              availableQuantity: 8,
+              tags: ['Italian', 'Pasta', 'Creamy'],
+              isActive: true,
+              cookId: user?.id || 'ck-maria',
+              rating: 4.8,
+              totalReviews: 23,
+              image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Margherita Pizza',
+              description: 'Traditional Neapolitan pizza with fresh mozzarella, basil, and San Marzano tomatoes',
+              price: 19.99,
+              mealType: 'dinner',
+              availableQuantity: 6,
+              tags: ['Italian', 'Pizza', 'Vegetarian'],
+              isActive: true,
+              cookId: user?.id || 'ck-maria',
+              rating: 4.7,
+              totalReviews: 45,
+              image: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '3',
+              title: 'Tiramisu',
+              description: 'Classic Italian dessert with layers of coffee-soaked ladyfingers and mascarpone cream',
+              price: 8.99,
+              mealType: 'dinner',
+              availableQuantity: 10,
+              tags: ['Italian', 'Dessert', 'Coffee'],
+              isActive: true,
+              cookId: user?.id || 'ck-maria',
+              rating: 4.9,
+              totalReviews: 37,
+              image: 'https://images.pexels.com/photos/6133305/pexels-photo-6133305.jpeg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        } else if (user?.id === 'ck-sarah' || user?.name === 'Sarah Johnson') {
+          mockItems = [
+            {
+              id: '1',
+              title: 'Artisan Avocado Toast',
+              description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, and microgreens',
+              price: 12.50,
+              mealType: 'breakfast',
+              availableQuantity: 12,
+              tags: ['Healthy', 'Vegetarian', 'Fresh'],
+              isActive: true,
+              cookId: user?.id || 'ck-sarah',
+              rating: 4.6,
+              totalReviews: 67,
+              image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Quinoa Buddha Bowl',
+              description: 'Nutrient-rich bowl with quinoa, roasted vegetables, chickpeas, and tahini dressing',
+              price: 14.99,
+              mealType: 'lunch',
+              availableQuantity: 8,
+              tags: ['Vegan', 'Healthy', 'Gluten-Free'],
+              isActive: true,
+              cookId: user?.id || 'ck-sarah',
+              rating: 4.7,
+              totalReviews: 42,
+              image: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '3',
+              title: 'Chia Seed Pudding',
+              description: 'Overnight chia pudding with coconut milk, fresh berries, and maple syrup',
+              price: 7.99,
+              mealType: 'breakfast',
+              availableQuantity: 15,
+              tags: ['Vegan', 'Breakfast', 'Healthy'],
+              isActive: true,
+              cookId: user?.id || 'ck-sarah',
+              rating: 4.5,
+              totalReviews: 31,
+              image: 'https://images.pexels.com/photos/3066/healthy-breakfast-fruit-cereals.jpg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        } else if (user?.id === 'ck-david' || user?.name === 'David Chen') {
+          mockItems = [
+            {
+              id: '1',
+              title: 'Pan-Seared Salmon',
+              description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
+              price: 24.99,
+              mealType: 'dinner',
+              availableQuantity: 6,
+              tags: ['Seafood', 'Healthy', 'Gourmet'],
+              isActive: true,
+              cookId: user?.id || 'ck-david',
+              rating: 4.9,
+              totalReviews: 124,
+              image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Lobster Fried Rice',
+              description: 'Wok-fried jasmine rice with chunks of fresh lobster, vegetables, and XO sauce',
+              price: 28.99,
+              mealType: 'dinner',
+              availableQuantity: 4,
+              tags: ['Asian Fusion', 'Seafood', 'Gourmet'],
+              isActive: true,
+              cookId: user?.id || 'ck-david',
+              rating: 4.8,
+              totalReviews: 86,
+              image: 'https://images.pexels.com/photos/723198/pexels-photo-723198.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '3',
+              title: 'Miso Black Cod',
+              description: 'Black cod marinated in sweet miso, sake, and mirin, broiled to perfection',
+              price: 26.99,
+              mealType: 'dinner',
+              availableQuantity: 5,
+              tags: ['Japanese', 'Seafood', 'Gourmet'],
+              isActive: true,
+              cookId: user?.id || 'ck-david',
+              rating: 4.9,
+              totalReviews: 92,
+              image: 'https://images.pexels.com/photos/842142/pexels-photo-842142.jpeg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        } else if (user?.id === 'ck-kenji' || user?.name === 'Kenji Tanaka') {
+          mockItems = [
+            {
+              id: '1',
+              title: 'Authentic Ramen Bowl',
+              description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
+              price: 18.99,
+              mealType: 'lunch',
+              availableQuantity: 10,
+              tags: ['Japanese', 'Ramen', 'Comfort Food'],
+              isActive: true,
+              cookId: user?.id || 'ck-kenji',
+              rating: 4.9,
+              totalReviews: 156,
+              image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Chicken Katsu Curry',
+              description: 'Crispy panko-breaded chicken cutlet with Japanese curry sauce and steamed rice',
+              price: 16.99,
+              mealType: 'dinner',
+              availableQuantity: 8,
+              tags: ['Japanese', 'Curry', 'Comfort Food'],
+              isActive: true,
+              cookId: user?.id || 'ck-kenji',
+              rating: 4.8,
+              totalReviews: 112,
+              image: 'https://images.pexels.com/photos/1633525/pexels-photo-1633525.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '3',
+              title: 'Assorted Sushi Platter',
+              description: 'Chef\'s selection of fresh nigiri and maki rolls with wasabi, ginger, and soy sauce',
+              price: 29.99,
+              mealType: 'dinner',
+              availableQuantity: 5,
+              tags: ['Japanese', 'Sushi', 'Raw'],
+              isActive: true,
+              cookId: user?.id || 'ck-kenji',
+              rating: 4.9,
+              totalReviews: 98,
+              image: 'https://images.pexels.com/photos/2098085/pexels-photo-2098085.jpeg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        } else if (user?.id === 'ck-elena' || user?.name === 'Elena Papadopoulos') {
+          mockItems = [
+            {
+              id: '1',
+              title: 'Authentic Greek Moussaka',
+              description: 'Layers of eggplant, potato, and seasoned ground lamb topped with béchamel sauce',
+              price: 17.99,
+              mealType: 'dinner',
+              availableQuantity: 6,
+              tags: ['Greek', 'Mediterranean', 'Comfort Food'],
+              isActive: true,
+              cookId: user?.id || 'ck-elena',
+              rating: 4.8,
+              totalReviews: 87,
+              image: 'https://images.pexels.com/photos/6419736/pexels-photo-6419736.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Greek Salad',
+              description: 'Fresh tomatoes, cucumber, red onion, olives, and feta cheese with olive oil dressing',
+              price: 12.99,
+              mealType: 'lunch',
+              availableQuantity: 10,
+              tags: ['Greek', 'Salad', 'Healthy'],
+              isActive: true,
+              cookId: user?.id || 'ck-elena',
+              rating: 4.7,
+              totalReviews: 65,
+              image: 'https://images.pexels.com/photos/1211887/pexels-photo-1211887.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '3',
+              title: 'Spanakopita',
+              description: 'Flaky phyllo pastry filled with spinach, feta cheese, onions, and herbs',
+              price: 14.99,
+              mealType: 'lunch',
+              availableQuantity: 8,
+              tags: ['Greek', 'Vegetarian', 'Pastry'],
+              isActive: true,
+              cookId: user?.id || 'ck-elena',
+              rating: 4.6,
+              totalReviews: 54,
+              image: 'https://images.pexels.com/photos/6419737/pexels-photo-6419737.jpeg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        } else if (user?.id === 'ck-marcus' || user?.name === 'Marcus Campbell') {
+          mockItems = [
+            {
+              id: '1',
+              title: 'Jerk Chicken with Rice & Peas',
+              description: 'Spicy marinated chicken with traditional Jamaican rice and kidney beans',
+              price: 18.99,
+              mealType: 'dinner',
+              availableQuantity: 8,
+              tags: ['Caribbean', 'Spicy', 'Chicken'],
+              isActive: true,
+              cookId: user?.id || 'ck-marcus',
+              rating: 4.9,
+              totalReviews: 108,
+              image: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Oxtail Stew',
+              description: 'Slow-cooked oxtail with butter beans, carrots, and traditional Caribbean spices',
+              price: 22.99,
+              mealType: 'dinner',
+              availableQuantity: 6,
+              tags: ['Caribbean', 'Stew', 'Comfort Food'],
+              isActive: true,
+              cookId: user?.id || 'ck-marcus',
+              rating: 4.8,
+              totalReviews: 76,
+              image: 'https://images.pexels.com/photos/5409010/pexels-photo-5409010.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '3',
+              title: 'Ackee and Saltfish',
+              description: 'Jamaica\'s national dish with ackee fruit, salted cod, onions, and spices',
+              price: 16.99,
+              mealType: 'breakfast',
+              availableQuantity: 5,
+              tags: ['Caribbean', 'Seafood', 'Traditional'],
+              isActive: true,
+              cookId: user?.id || 'ck-marcus',
+              rating: 4.7,
+              totalReviews: 62,
+              image: 'https://images.pexels.com/photos/5409009/pexels-photo-5409009.jpeg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        } else {
+          // Default items for any other cook
+          mockItems = [
+            {
+              id: '1',
+              title: 'Homemade Pasta Carbonara',
+              description: 'Fresh pasta with creamy sauce',
+              price: 16.99,
+              mealType: 'lunch',
+              availableQuantity: 5,
+              tags: ['Italian', 'Pasta'],
+              isActive: true,
+              cookId: user?.id || '1',
+              rating: 4.8,
+              totalReviews: 23,
+              image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
+            },
+            {
+              id: '2',
+              title: 'Chicken Curry',
+              description: 'Spicy chicken curry with basmati rice',
+              price: 14.99,
+              mealType: 'dinner',
+              availableQuantity: 7,
+              tags: ['Indian', 'Spicy', 'Chicken'],
+              isActive: true,
+              cookId: user?.id || '1',
+              rating: 4.6,
+              totalReviews: 18,
+              image: 'https://images.pexels.com/photos/2474661/pexels-photo-2474661.jpeg?auto=compress&cs=tinysrgb&w=400',
+            }
+          ];
+        }
+        
         setMenuItems(mockItems);
+        
+        // Save to AsyncStorage
+        await AsyncStorage.setItem(`menuItems_${user?.id}`, JSON.stringify(mockItems));
       }
     } catch (error) {
       console.error('Error loading menu items:', error);
@@ -81,20 +374,21 @@ function CookKitchenInterface() {
       const storedOrders = await AsyncStorage.getItem('orderHistory');
       if (storedOrders) {
         const allOrders = JSON.parse(storedOrders);
-        const cookOrders = allOrders.filter((order: any) => 
+        // Filter orders for this cook
+        const cookSpecificOrders = allOrders.filter((order: any) => 
           order.cookId === user?.id || order.cookName === user?.name
         );
-        setOrders(cookOrders);
+        setOrders(cookSpecificOrders);
       }
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading cook orders:', error);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
+    await loadCookOrders();
     await loadMenuItems();
-    await loadOrders();
     setRefreshing(false);
   };
 
@@ -453,7 +747,7 @@ function CustomerDiscoveryInterface() {
   const loadCooks = async () => {
     const mockCooks = [
       {
-        id: '1',
+        id: 'ck-maria',
         name: 'Maria Rodriguez',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -469,36 +763,487 @@ function CustomerDiscoveryInterface() {
         location: 'North Beach, SF',
         distance: 1.2,
       },
-      // Add more cooks...
+      {
+        id: 'ck-sarah',
+        name: 'Sarah Johnson',
+        avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.7,
+        totalReviews: 189,
+        yearsExperience: 5,
+        specialties: ['Healthy', 'Vegan', 'Organic'],
+        totalOrders: 890,
+        responseTime: '< 20 min',
+        isVerified: true,
+        badges: ['Healthy Choice', 'Eco-Friendly'],
+        joinedDate: '2020-07-22',
+        bio: 'Certified nutritionist and plant-based chef.',
+        location: 'Mission District, SF',
+        distance: 0.8,
+      },
+      {
+        id: 'ck-david',
+        name: 'David Chen',
+        avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.8,
+        totalReviews: 312,
+        yearsExperience: 12,
+        specialties: ['Asian Fusion', 'Seafood', 'Gourmet'],
+        totalOrders: 1580,
+        responseTime: '< 10 min',
+        isVerified: true,
+        badges: ['Master Chef', 'Premium Quality', 'Lightning Fast'],
+        joinedDate: '2018-01-10',
+        bio: 'Former Michelin-starred restaurant chef specializing in seafood and Asian fusion.',
+        location: 'Chinatown, SF',
+        distance: 2.1,
+      },
+      {
+        id: 'ck-kenji',
+        name: 'Kenji Tanaka',
+        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.9,
+        totalReviews: 156,
+        yearsExperience: 15,
+        specialties: ['Japanese', 'Ramen', 'Traditional'],
+        totalOrders: 720,
+        responseTime: '< 25 min',
+        isVerified: true,
+        badges: ['Authentic Master', 'Traditional Recipes'],
+        joinedDate: '2021-02-14',
+        bio: 'Third-generation ramen master from Tokyo.',
+        location: 'Japantown, SF',
+        distance: 1.5,
+      },
+      {
+        id: 'ck-elena',
+        name: 'Elena Papadopoulos',
+        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.6,
+        totalReviews: 134,
+        yearsExperience: 6,
+        specialties: ['Greek', 'Mediterranean', 'Healthy'],
+        totalOrders: 567,
+        responseTime: '< 30 min',
+        isVerified: true,
+        badges: ['Mediterranean Expert', 'Fresh Ingredients'],
+        joinedDate: '2020-11-08',
+        bio: 'Born in Athens, bringing authentic Greek flavors.',
+        location: 'Castro, SF',
+        distance: 1.8,
+      },
+      {
+        id: 'ck-marcus',
+        name: 'Marcus Campbell',
+        avatar: 'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.8,
+        totalReviews: 203,
+        yearsExperience: 10,
+        specialties: ['Caribbean', 'BBQ', 'Spicy'],
+        totalOrders: 892,
+        responseTime: '< 20 min',
+        isVerified: true,
+        badges: ['Spice Master', 'BBQ Expert', 'Island Flavors'],
+        joinedDate: '2019-08-12',
+        bio: 'Jamaican-born chef specializing in Caribbean cuisine.',
+        location: 'Oakland, CA',
+        distance: 2.7,
+      },
     ];
     setCooks(mockCooks);
   };
 
   const loadFoodItems = async () => {
-    const mockFoodItems = [
-      {
-        id: '1',
-        title: 'Homemade Pasta Carbonara',
-        description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese',
-        price: 16.99,
-        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '1',
-        cookName: 'Maria Rodriguez',
-        cookRating: 4.9,
-        distance: 1.2,
-        prepTime: 25,
-        mealType: 'lunch',
-        tags: ['Italian', 'Pasta', 'Creamy', 'Comfort Food'],
-        foodRating: 4.8,
-        totalFoodReviews: 89,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Eggs', 'Dairy', 'Gluten'],
-        nutritionInfo: { calories: 520, protein: 22, carbs: 45, fat: 28 },
-      },
-      // Add more food items...
-    ];
-    setFoodItems(mockFoodItems);
+    try {
+      // First try to load all cook menu items from AsyncStorage
+      const allMenuItems = [];
+      
+      // Get all cook IDs
+      const cookIds = [
+        'ck-maria', 'ck-sarah', 'ck-david', 'ck-kenji', 'ck-elena', 'ck-marcus'
+      ];
+      
+      // Load menu items for each cook
+      for (const cookId of cookIds) {
+        const storedItems = await AsyncStorage.getItem(`menuItems_${cookId}`);
+        if (storedItems) {
+          const items = JSON.parse(storedItems);
+          allMenuItems.push(...items);
+        }
+      }
+      
+      if (allMenuItems.length > 0) {
+        setFoodItems(allMenuItems);
+        return;
+      }
+      
+      // If no stored items found, use mock data
+      const mockFoodItems = [
+        {
+          id: '1',
+          title: 'Homemade Pasta Carbonara',
+          description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese',
+          price: 16.99,
+          image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-maria',
+          cookName: 'Maria Rodriguez',
+          cookRating: 4.9,
+          distance: 1.2,
+          prepTime: 25,
+          mealType: 'lunch',
+          tags: ['Italian', 'Pasta', 'Creamy', 'Comfort Food'],
+          foodRating: 4.8,
+          totalFoodReviews: 89,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Eggs', 'Dairy', 'Gluten'],
+          nutritionInfo: { calories: 520, protein: 22, carbs: 45, fat: 28 },
+        },
+        {
+          id: '2',
+          title: 'Margherita Pizza',
+          description: 'Traditional Neapolitan pizza with fresh mozzarella, basil, and San Marzano tomatoes',
+          price: 19.99,
+          image: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-maria',
+          cookName: 'Maria Rodriguez',
+          cookRating: 4.9,
+          distance: 1.2,
+          prepTime: 30,
+          mealType: 'dinner',
+          tags: ['Italian', 'Pizza', 'Vegetarian'],
+          foodRating: 4.7,
+          totalFoodReviews: 45,
+          isPopular: false,
+          isNew: false,
+          allergens: ['Dairy', 'Gluten'],
+          nutritionInfo: { calories: 420, protein: 18, carbs: 52, fat: 16 },
+        },
+        {
+          id: '3',
+          title: 'Tiramisu',
+          description: 'Classic Italian dessert with layers of coffee-soaked ladyfingers and mascarpone cream',
+          price: 8.99,
+          image: 'https://images.pexels.com/photos/6133305/pexels-photo-6133305.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-maria',
+          cookName: 'Maria Rodriguez',
+          cookRating: 4.9,
+          distance: 1.2,
+          prepTime: 20,
+          mealType: 'dinner',
+          tags: ['Italian', 'Dessert', 'Coffee'],
+          foodRating: 4.9,
+          totalFoodReviews: 37,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Eggs', 'Dairy', 'Gluten'],
+          nutritionInfo: { calories: 350, protein: 5, carbs: 40, fat: 18 },
+        },
+        {
+          id: '4',
+          title: 'Artisan Avocado Toast',
+          description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, and microgreens',
+          price: 12.50,
+          image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-sarah',
+          cookName: 'Sarah Johnson',
+          cookRating: 4.7,
+          distance: 0.8,
+          prepTime: 15,
+          mealType: 'breakfast',
+          tags: ['Healthy', 'Vegetarian', 'Fresh'],
+          foodRating: 4.6,
+          totalFoodReviews: 67,
+          isPopular: false,
+          isNew: true,
+          allergens: ['Gluten'],
+          nutritionInfo: { calories: 320, protein: 12, carbs: 35, fat: 18 },
+        },
+        {
+          id: '5',
+          title: 'Quinoa Buddha Bowl',
+          description: 'Nutrient-rich bowl with quinoa, roasted vegetables, chickpeas, and tahini dressing',
+          price: 14.99,
+          image: 'https://images.pexels.com/photos/1640774/pexels-photo-1640774.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-sarah',
+          cookName: 'Sarah Johnson',
+          cookRating: 4.7,
+          distance: 0.8,
+          prepTime: 20,
+          mealType: 'lunch',
+          tags: ['Vegan', 'Healthy', 'Gluten-Free'],
+          foodRating: 4.7,
+          totalFoodReviews: 42,
+          isPopular: true,
+          isNew: false,
+          allergens: [],
+          nutritionInfo: { calories: 380, protein: 15, carbs: 45, fat: 12 },
+        },
+        {
+          id: '6',
+          title: 'Chia Seed Pudding',
+          description: 'Overnight chia pudding with coconut milk, fresh berries, and maple syrup',
+          price: 7.99,
+          image: 'https://images.pexels.com/photos/3066/healthy-breakfast-fruit-cereals.jpg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-sarah',
+          cookName: 'Sarah Johnson',
+          cookRating: 4.7,
+          distance: 0.8,
+          prepTime: 10,
+          mealType: 'breakfast',
+          tags: ['Vegan', 'Breakfast', 'Healthy'],
+          foodRating: 4.5,
+          totalFoodReviews: 31,
+          isPopular: false,
+          isNew: false,
+          allergens: [],
+          nutritionInfo: { calories: 280, protein: 8, carbs: 32, fat: 14 },
+        },
+        {
+          id: '7',
+          title: 'Pan-Seared Salmon',
+          description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
+          price: 24.99,
+          image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-david',
+          cookName: 'David Chen',
+          cookRating: 4.8,
+          distance: 2.1,
+          prepTime: 35,
+          mealType: 'dinner',
+          tags: ['Seafood', 'Healthy', 'Gourmet'],
+          foodRating: 4.9,
+          totalFoodReviews: 124,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Fish'],
+          nutritionInfo: { calories: 450, protein: 35, carbs: 25, fat: 22 },
+        },
+        {
+          id: '8',
+          title: 'Lobster Fried Rice',
+          description: 'Wok-fried jasmine rice with chunks of fresh lobster, vegetables, and XO sauce',
+          price: 28.99,
+          image: 'https://images.pexels.com/photos/723198/pexels-photo-723198.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-david',
+          cookName: 'David Chen',
+          cookRating: 4.8,
+          distance: 2.1,
+          prepTime: 30,
+          mealType: 'dinner',
+          tags: ['Asian Fusion', 'Seafood', 'Gourmet'],
+          foodRating: 4.8,
+          totalFoodReviews: 86,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Shellfish', 'Soy'],
+          nutritionInfo: { calories: 520, protein: 28, carbs: 60, fat: 18 },
+        },
+        {
+          id: '9',
+          title: 'Miso Black Cod',
+          description: 'Black cod marinated in sweet miso, sake, and mirin, broiled to perfection',
+          price: 26.99,
+          image: 'https://images.pexels.com/photos/842142/pexels-photo-842142.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-david',
+          cookName: 'David Chen',
+          cookRating: 4.8,
+          distance: 2.1,
+          prepTime: 40,
+          mealType: 'dinner',
+          tags: ['Japanese', 'Seafood', 'Gourmet'],
+          foodRating: 4.9,
+          totalFoodReviews: 92,
+          isPopular: false,
+          isNew: true,
+          allergens: ['Fish', 'Soy'],
+          nutritionInfo: { calories: 380, protein: 32, carbs: 18, fat: 20 },
+        },
+        {
+          id: '10',
+          title: 'Authentic Ramen Bowl',
+          description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
+          price: 18.99,
+          image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-kenji',
+          cookName: 'Kenji Tanaka',
+          cookRating: 4.9,
+          distance: 1.5,
+          prepTime: 45,
+          mealType: 'lunch',
+          tags: ['Japanese', 'Ramen', 'Comfort Food'],
+          foodRating: 4.9,
+          totalFoodReviews: 156,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Eggs', 'Gluten', 'Soy'],
+          nutritionInfo: { calories: 680, protein: 28, carbs: 65, fat: 32 },
+        },
+        {
+          id: '11',
+          title: 'Chicken Katsu Curry',
+          description: 'Crispy panko-breaded chicken cutlet with Japanese curry sauce and steamed rice',
+          price: 16.99,
+          image: 'https://images.pexels.com/photos/1633525/pexels-photo-1633525.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-kenji',
+          cookName: 'Kenji Tanaka',
+          cookRating: 4.9,
+          distance: 1.5,
+          prepTime: 35,
+          mealType: 'dinner',
+          tags: ['Japanese', 'Curry', 'Comfort Food'],
+          foodRating: 4.8,
+          totalFoodReviews: 112,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Gluten', 'Soy'],
+          nutritionInfo: { calories: 720, protein: 32, carbs: 85, fat: 24 },
+        },
+        {
+          id: '12',
+          title: 'Assorted Sushi Platter',
+          description: 'Chef\'s selection of fresh nigiri and maki rolls with wasabi, ginger, and soy sauce',
+          price: 29.99,
+          image: 'https://images.pexels.com/photos/2098085/pexels-photo-2098085.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-kenji',
+          cookName: 'Kenji Tanaka',
+          cookRating: 4.9,
+          distance: 1.5,
+          prepTime: 30,
+          mealType: 'dinner',
+          tags: ['Japanese', 'Sushi', 'Raw'],
+          foodRating: 4.9,
+          totalFoodReviews: 98,
+          isPopular: false,
+          isNew: false,
+          allergens: ['Fish', 'Shellfish', 'Soy'],
+          nutritionInfo: { calories: 520, protein: 30, carbs: 60, fat: 15 },
+        },
+        {
+          id: '13',
+          title: 'Authentic Greek Moussaka',
+          description: 'Layers of eggplant, potato, and seasoned ground lamb topped with béchamel sauce',
+          price: 17.99,
+          image: 'https://images.pexels.com/photos/6419736/pexels-photo-6419736.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-elena',
+          cookName: 'Elena Papadopoulos',
+          cookRating: 4.6,
+          distance: 1.8,
+          prepTime: 50,
+          mealType: 'dinner',
+          tags: ['Greek', 'Mediterranean', 'Comfort Food'],
+          foodRating: 4.8,
+          totalFoodReviews: 87,
+          isPopular: true,
+          isNew: false,
+          allergens: ['Dairy', 'Gluten'],
+          nutritionInfo: { calories: 580, protein: 26, carbs: 42, fat: 32 },
+        },
+        {
+          id: '14',
+          title: 'Greek Salad',
+          description: 'Fresh tomatoes, cucumber, red onion, olives, and feta cheese with olive oil dressing',
+          price: 12.99,
+          image: 'https://images.pexels.com/photos/1211887/pexels-photo-1211887.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-elena',
+          cookName: 'Elena Papadopoulos',
+          cookRating: 4.6,
+          distance: 1.8,
+          prepTime: 15,
+          mealType: 'lunch',
+          tags: ['Greek', 'Salad', 'Healthy'],
+          foodRating: 4.7,
+          totalFoodReviews: 65,
+          isPopular: false,
+          isNew: false,
+          allergens: ['Dairy'],
+          nutritionInfo: { calories: 320, protein: 12, carbs: 18, fat: 22 },
+        },
+        {
+          id: '15',
+          title: 'Spanakopita',
+          description: 'Flaky phyllo pastry filled with spinach, feta cheese, onions, and herbs',
+          price: 14.99,
+          image: 'https://images.pexels.com/photos/6419737/pexels-photo-6419737.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-elena',
+          cookName: 'Elena Papadopoulos',
+          cookRating: 4.6,
+          distance: 1.8,
+          prepTime: 25,
+          mealType: 'lunch',
+          tags: ['Greek', 'Vegetarian', 'Pastry'],
+          foodRating: 4.6,
+          totalFoodReviews: 54,
+          isPopular: false,
+          isNew: true,
+          allergens: ['Dairy', 'Gluten'],
+          nutritionInfo: { calories: 380, protein: 14, carbs: 28, fat: 24 },
+        },
+        {
+          id: '16',
+          title: 'Jerk Chicken with Rice & Peas',
+          description: 'Spicy marinated chicken with traditional Jamaican rice and kidney beans',
+          price: 18.99,
+          image: 'https://images.pexels.com/photos/2338407/pexels-photo-2338407.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-marcus',
+          cookName: 'Marcus Campbell',
+          cookRating: 4.8,
+          distance: 2.7,
+          prepTime: 40,
+          mealType: 'dinner',
+          tags: ['Caribbean', 'Spicy', 'Chicken'],
+          foodRating: 4.9,
+          totalFoodReviews: 108,
+          isPopular: true,
+          isNew: false,
+          allergens: [],
+          nutritionInfo: { calories: 620, protein: 38, carbs: 65, fat: 22 },
+        },
+        {
+          id: '17',
+          title: 'Oxtail Stew',
+          description: 'Slow-cooked oxtail with butter beans, carrots, and traditional Caribbean spices',
+          price: 22.99,
+          image: 'https://images.pexels.com/photos/5409010/pexels-photo-5409010.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-marcus',
+          cookName: 'Marcus Campbell',
+          cookRating: 4.8,
+          distance: 2.7,
+          prepTime: 60,
+          mealType: 'dinner',
+          tags: ['Caribbean', 'Stew', 'Comfort Food'],
+          foodRating: 4.8,
+          totalFoodReviews: 76,
+          isPopular: false,
+          isNew: false,
+          allergens: [],
+          nutritionInfo: { calories: 580, protein: 42, carbs: 38, fat: 28 },
+        },
+        {
+          id: '18',
+          title: 'Ackee and Saltfish',
+          description: 'Jamaica\'s national dish with ackee fruit, salted cod, onions, and spices',
+          price: 16.99,
+          image: 'https://images.pexels.com/photos/5409009/pexels-photo-5409009.jpeg?auto=compress&cs=tinysrgb&w=800',
+          cookId: 'ck-marcus',
+          cookName: 'Marcus Campbell',
+          cookRating: 4.8,
+          distance: 2.7,
+          prepTime: 30,
+          mealType: 'breakfast',
+          tags: ['Caribbean', 'Seafood', 'Traditional'],
+          foodRating: 4.7,
+          totalFoodReviews: 62,
+          isPopular: false,
+          isNew: true,
+          allergens: ['Fish'],
+          nutritionInfo: { calories: 420, protein: 28, carbs: 32, fat: 18 },
+        }
+      ];
+      
+      setFoodItems(mockFoodItems);
+    } catch (error) {
+      console.error('Error loading food items:', error);
+    }
   };
 
   const countActiveFilters = () => {
@@ -537,8 +1282,49 @@ function CustomerDiscoveryInterface() {
       filtered = filtered.filter(item => item.cookId === selectedCookId);
     }
 
-    // Apply other filters...
-    // (Implementation details for price, distance, rating, etc.)
+    // Apply price range filter
+    if (filters.priceRange.min) {
+      filtered = filtered.filter(item => item.price >= parseFloat(filters.priceRange.min));
+    }
+    if (filters.priceRange.max) {
+      filtered = filtered.filter(item => item.price <= parseFloat(filters.priceRange.max));
+    }
+
+    // Apply cuisine type filter
+    if (filters.cuisineTypes.length > 0) {
+      filtered = filtered.filter(item => 
+        item.tags.some((tag: string) => filters.cuisineTypes.includes(tag))
+      );
+    }
+
+    // Apply dietary restrictions filter
+    if (filters.dietaryRestrictions.length > 0) {
+      filtered = filtered.filter(item => 
+        item.tags.some((tag: string) => filters.dietaryRestrictions.includes(tag))
+      );
+    }
+
+    // Apply sorting
+    switch (filters.sortBy) {
+      case 'price_low':
+        filtered.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_high':
+        filtered.sort((a, b) => b.price - a.price);
+        break;
+      case 'rating':
+        filtered.sort((a, b) => b.foodRating - a.foodRating);
+        break;
+      case 'distance':
+        filtered.sort((a, b) => a.distance - b.distance);
+        break;
+      case 'prep_time':
+        filtered.sort((a, b) => a.prepTime - b.prepTime);
+        break;
+      default:
+        // Default relevance sorting (no change)
+        break;
+    }
 
     return filtered;
   };
