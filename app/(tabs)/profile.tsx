@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,50 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Modal,
+  Platform,
 } from 'react-native';
 import { Avatar, Card, List, Switch, Button } from 'react-native-paper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
+import { X, AlertTriangle, Clock, CheckCircle, MessageCircle } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface ReportedIssue {
+  id: string;
+  orderId?: string;
+  issueType: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'resolved' | 'closed';
+  reportDate: string;
+  lastUpdate: string;
+  response?: string;
+}
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { isSubscribed } = useSubscription();
   const [notifications, setNotifications] = useState(true);
+  const [reportedIssues, setReportedIssues] = useState<ReportedIssue[]>([]);
+  const [showIssuesModal, setShowIssuesModal] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<ReportedIssue | null>(null);
+
+  useEffect(() => {
+    loadReportedIssues();
+  }, []);
+
+  const loadReportedIssues = async () => {
+    try {
+      const storedIssues = await AsyncStorage.getItem('reportedIssues');
+      if (storedIssues) {
+        setReportedIssues(JSON.parse(storedIssues));
+      }
+    } catch (error) {
+      console.error('Error loading reported issues:', error);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -27,6 +60,40 @@ export default function ProfileScreen() {
         { text: 'Logout', onPress: logout, style: 'destructive' },
       ]
     );
+  };
+
+  const getStatusIcon = (status: ReportedIssue['status']) => {
+    switch (status) {
+      case 'pending':
+        return <Clock size={16} color={theme.colors.warning} />;
+      case 'in_progress':
+        return <MessageCircle size={16} color={theme.colors.primary} />;
+      case 'resolved':
+        return <CheckCircle size={16} color={theme.colors.success} />;
+      case 'closed':
+        return <CheckCircle size={16} color={theme.colors.onSurfaceVariant} />;
+      default:
+        return <AlertTriangle size={16} color={theme.colors.error} />;
+    }
+  };
+
+  const getStatusColor = (status: ReportedIssue['status']) => {
+    switch (status) {
+      case 'pending':
+        return theme.colors.warning;
+      case 'in_progress':
+        return theme.colors.primary;
+      case 'resolved':
+        return theme.colors.success;
+      case 'closed':
+        return theme.colors.onSurfaceVariant;
+      default:
+        return theme.colors.error;
+    }
+  };
+
+  const handleIssuePress = (issue: ReportedIssue) => {
+    setSelectedIssue(issue);
   };
 
   const menuItems = [
@@ -110,6 +177,46 @@ export default function ProfileScreen() {
         </View>
       </Card>
 
+      {/* Reported Issues Section */}
+      <Card style={styles.issuesCard}>
+        <View style={styles.issuesHeader}>
+          <Text style={styles.sectionTitle}>Reported Issues</Text>
+          <TouchableOpacity onPress={() => setShowIssuesModal(true)}>
+            <Text style={styles.viewAllText}>View All ({reportedIssues.length})</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {reportedIssues.length === 0 ? (
+          <Text style={styles.noIssuesText}>No issues reported</Text>
+        ) : (
+          <View style={styles.recentIssues}>
+            {reportedIssues.slice(0, 3).map((issue) => (
+              <TouchableOpacity
+                key={issue.id}
+                style={styles.issueItem}
+                onPress={() => handleIssuePress(issue)}
+              >
+                <View style={styles.issueHeader}>
+                  <Text style={styles.issueType} numberOfLines={1}>
+                    {issue.issueType}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(issue.status) }]}>
+                    {getStatusIcon(issue.status)}
+                    <Text style={styles.statusText}>{issue.status}</Text>
+                  </View>
+                </View>
+                <Text style={styles.issueDescription} numberOfLines={2}>
+                  {issue.description}
+                </Text>
+                <Text style={styles.issueDate}>
+                  {new Date(issue.reportDate).toLocaleDateString()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </Card>
+
       {!user?.isCook && (
         <Card style={styles.cookCard}>
           <View style={styles.cookContent}>
@@ -165,6 +272,150 @@ export default function ProfileScreen() {
       <View style={styles.footer}>
         <Text style={styles.version}>HomeFood v1.0.0</Text>
       </View>
+
+      {/* Issues Modal */}
+      <Modal
+        visible={showIssuesModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowIssuesModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Reported Issues</Text>
+            <TouchableOpacity 
+              onPress={() => setShowIssuesModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <X size={24} color={theme.colors.onSurface} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {reportedIssues.length === 0 ? (
+              <View style={styles.emptyIssues}>
+                <AlertTriangle size={48} color={theme.colors.onSurfaceVariant} />
+                <Text style={styles.emptyIssuesTitle}>No Issues Reported</Text>
+                <Text style={styles.emptyIssuesText}>
+                  When you report issues with orders or the app, they'll appear here for tracking.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.allIssues}>
+                {reportedIssues.map((issue) => (
+                  <Card key={issue.id} style={styles.issueCard}>
+                    <TouchableOpacity
+                      style={styles.issueCardContent}
+                      onPress={() => handleIssuePress(issue)}
+                    >
+                      <View style={styles.issueCardHeader}>
+                        <Text style={styles.issueCardType}>{issue.issueType}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(issue.status) }]}>
+                          {getStatusIcon(issue.status)}
+                          <Text style={styles.statusText}>{issue.status}</Text>
+                        </View>
+                      </View>
+                      
+                      <Text style={styles.issueCardDescription}>
+                        {issue.description}
+                      </Text>
+                      
+                      {issue.orderId && (
+                        <Text style={styles.issueOrderId}>
+                          Order: {issue.orderId}
+                        </Text>
+                      )}
+                      
+                      <View style={styles.issueCardFooter}>
+                        <Text style={styles.issueCardDate}>
+                          Reported: {new Date(issue.reportDate).toLocaleDateString()}
+                        </Text>
+                        <Text style={styles.issueCardUpdate}>
+                          Updated: {new Date(issue.lastUpdate).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      
+                      {issue.response && (
+                        <View style={styles.responseSection}>
+                          <Text style={styles.responseLabel}>Support Response:</Text>
+                          <Text style={styles.responseText}>{issue.response}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </Card>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Issue Detail Modal */}
+      <Modal
+        visible={!!selectedIssue}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSelectedIssue(null)}
+      >
+        {selectedIssue && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Issue Details</Text>
+              <TouchableOpacity 
+                onPress={() => setSelectedIssue(null)}
+                style={styles.modalCloseButton}
+              >
+                <X size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <Card style={styles.issueDetailCard}>
+                <View style={styles.issueDetailHeader}>
+                  <Text style={styles.issueDetailType}>{selectedIssue.issueType}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedIssue.status) }]}>
+                    {getStatusIcon(selectedIssue.status)}
+                    <Text style={styles.statusText}>{selectedIssue.status}</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.issueDetailDescription}>
+                  {selectedIssue.description}
+                </Text>
+                
+                {selectedIssue.orderId && (
+                  <View style={styles.orderInfo}>
+                    <Text style={styles.orderInfoLabel}>Related Order:</Text>
+                    <Text style={styles.orderInfoValue}>{selectedIssue.orderId}</Text>
+                  </View>
+                )}
+                
+                <View style={styles.dateInfo}>
+                  <View style={styles.dateItem}>
+                    <Text style={styles.dateLabel}>Reported:</Text>
+                    <Text style={styles.dateValue}>
+                      {new Date(selectedIssue.reportDate).toLocaleString()}
+                    </Text>
+                  </View>
+                  <View style={styles.dateItem}>
+                    <Text style={styles.dateLabel}>Last Updated:</Text>
+                    <Text style={styles.dateValue}>
+                      {new Date(selectedIssue.lastUpdate).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+                
+                {selectedIssue.response && (
+                  <View style={styles.responseSection}>
+                    <Text style={styles.responseLabel}>Support Response:</Text>
+                    <Text style={styles.responseText}>{selectedIssue.response}</Text>
+                  </View>
+                )}
+              </Card>
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
     </ScrollView>
   );
 }
@@ -235,6 +486,81 @@ const styles = StyleSheet.create({
   subscribeButton: {
     alignSelf: 'flex-start',
   },
+  issuesCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    elevation: 2,
+  },
+  issuesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  noIssuesText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.lg,
+  },
+  recentIssues: {
+    gap: theme.spacing.md,
+  },
+  issueItem: {
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  issueHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  issueType: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    flex: 1,
+    marginRight: theme.spacing.md,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    gap: theme.spacing.xs,
+  },
+  statusText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+    textTransform: 'capitalize',
+  },
+  issueDescription: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 16,
+  },
+  issueDate: {
+    fontSize: 10,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
   cookCard: {
     marginHorizontal: 20,
     marginBottom: 20,
@@ -289,5 +615,178 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
     opacity: 0.5,
     fontFamily: 'Inter-Regular',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 60 : theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    flex: 1,
+    padding: theme.spacing.lg,
+  },
+  emptyIssues: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+    gap: theme.spacing.lg,
+  },
+  emptyIssuesTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  emptyIssuesText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  allIssues: {
+    gap: theme.spacing.md,
+  },
+  issueCard: {
+    padding: 0,
+  },
+  issueCardContent: {
+    padding: theme.spacing.lg,
+  },
+  issueCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  issueCardType: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    flex: 1,
+    marginRight: theme.spacing.md,
+  },
+  issueCardDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 20,
+    marginBottom: theme.spacing.md,
+  },
+  issueOrderId: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.md,
+  },
+  issueCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  issueCardDate: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  issueCardUpdate: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  responseSection: {
+    backgroundColor: theme.colors.surfaceVariant,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.md,
+  },
+  responseLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.sm,
+  },
+  responseText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 20,
+  },
+  issueDetailCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  issueDetailHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  issueDetailType: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    flex: 1,
+    marginRight: theme.spacing.md,
+  },
+  issueDetailDescription: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+    lineHeight: 24,
+    marginBottom: theme.spacing.lg,
+  },
+  orderInfo: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.lg,
+  },
+  orderInfoLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+    marginRight: theme.spacing.md,
+  },
+  orderInfoValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+  },
+  dateInfo: {
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  dateItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dateLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+  },
+  dateValue: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
   },
 });

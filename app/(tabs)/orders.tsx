@@ -184,23 +184,35 @@ export default function OrdersScreen() {
     }
 
     try {
-      // In a real app, this would send the report to your backend
-      const reportData: ReportIssueData = {
+      // Create the issue report
+      const issueReport = {
+        id: Date.now().toString(),
         orderId: selectedOrderForReport!.orderId,
         issueType: reportIssue.issueType,
         description: reportIssue.description,
+        status: 'pending' as const,
+        reportDate: new Date().toISOString(),
+        lastUpdate: new Date().toISOString(),
         contactMethod: reportIssue.contactMethod,
       };
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Store the issue in AsyncStorage for tracking
+      try {
+        const existingIssues = await AsyncStorage.getItem('reportedIssues');
+        const issues = existingIssues ? JSON.parse(existingIssues) : [];
+        issues.unshift(issueReport); // Add to beginning of array
+        
+        await AsyncStorage.setItem('reportedIssues', JSON.stringify(issues));
+      } catch (storageError) {
+        console.error('Error saving issue report:', storageError);
+      }
 
       setShowReportModal(false);
       setSelectedOrderForReport(null);
 
       Alert.alert(
         'Issue Reported',
-        `Thank you for reporting this issue. Our support team will contact you via ${reportIssue.contactMethod} within 24 hours to resolve this matter.`,
+        `Thank you for reporting this issue. Our support team will contact you via ${reportIssue.contactMethod} within 24 hours to resolve this matter. You can track the status of your report in your profile.`,
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -226,6 +238,11 @@ export default function OrdersScreen() {
   const handleReorder = (order: Order) => {
     // Navigate back to the food item or cook's menu
     router.push('/(tabs)');
+  };
+
+  const handleViewOrderDetails = (order: Order) => {
+    // Navigate to order tracking page for detailed view
+    handleTrackOrder(order);
   };
 
   const activeOrders = orders.filter(order => 
@@ -298,51 +315,53 @@ export default function OrdersScreen() {
         ) : (
           displayOrders.map((order) => (
             <Card key={order.orderId} style={styles.orderCard}>
-              <View style={styles.orderHeader}>
-                <View style={styles.orderInfo}>
-                  <Text style={styles.orderTitle}>
-                    {order.items[0]?.title || 'Order'} 
-                    {order.items.length > 1 && ` +${order.items.length - 1} more`}
-                  </Text>
-                  <Text style={styles.cookName}>by {order.cookName}</Text>
-                  <Text style={styles.trackingNumber}>#{order.trackingNumber}</Text>
+              <TouchableOpacity onPress={() => handleViewOrderDetails(order)}>
+                <View style={styles.orderHeader}>
+                  <View style={styles.orderInfo}>
+                    <Text style={styles.orderTitle}>
+                      {order.items[0]?.title || 'Order'} 
+                      {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                    </Text>
+                    <Text style={styles.cookName}>by {order.cookName}</Text>
+                    <Text style={styles.trackingNumber}>#{order.trackingNumber}</Text>
+                  </View>
+                  <Chip
+                    style={[styles.statusChip, { backgroundColor: getStatusColor(order.status) }]}
+                    textStyle={styles.statusText}
+                  >
+                    {getStatusText(order.status)}
+                  </Chip>
                 </View>
-                <Chip
-                  style={[styles.statusChip, { backgroundColor: getStatusColor(order.status) }]}
-                  textStyle={styles.statusText}
-                >
-                  {getStatusText(order.status)}
-                </Chip>
-              </View>
 
-              <View style={styles.orderDetails}>
-                <View style={styles.orderMeta}>
-                  <Text style={styles.metaLabel}>Order ID:</Text>
-                  <Text style={styles.metaValue}>{order.orderId}</Text>
+                <View style={styles.orderDetails}>
+                  <View style={styles.orderMeta}>
+                    <Text style={styles.metaLabel}>Order ID:</Text>
+                    <Text style={styles.metaValue}>{order.orderId}</Text>
+                  </View>
+                  <View style={styles.orderMeta}>
+                    <Text style={styles.metaLabel}>Quantity:</Text>
+                    <Text style={styles.metaValue}>{order.quantity} items</Text>
+                  </View>
+                  <View style={styles.orderMeta}>
+                    <Text style={styles.metaLabel}>Total:</Text>
+                    <Text style={styles.metaValue}>${order.totalPrice.toFixed(2)}</Text>
+                  </View>
+                  <View style={styles.orderMeta}>
+                    <Text style={styles.metaLabel}>Order Date:</Text>
+                    <Text style={styles.metaValue}>
+                      {format(new Date(order.orderDate), 'MMM dd, yyyy • h:mm a')}
+                    </Text>
+                  </View>
+                  <View style={styles.orderMeta}>
+                    <Text style={styles.metaLabel}>Delivery Time:</Text>
+                    <Text style={styles.metaValue}>{order.deliveryTime}</Text>
+                  </View>
+                  <View style={styles.orderMeta}>
+                    <Text style={styles.metaLabel}>Address:</Text>
+                    <Text style={styles.metaValue}>{order.deliveryAddress}</Text>
+                  </View>
                 </View>
-                <View style={styles.orderMeta}>
-                  <Text style={styles.metaLabel}>Quantity:</Text>
-                  <Text style={styles.metaValue}>{order.quantity} items</Text>
-                </View>
-                <View style={styles.orderMeta}>
-                  <Text style={styles.metaLabel}>Total:</Text>
-                  <Text style={styles.metaValue}>${order.totalPrice.toFixed(2)}</Text>
-                </View>
-                <View style={styles.orderMeta}>
-                  <Text style={styles.metaLabel}>Order Date:</Text>
-                  <Text style={styles.metaValue}>
-                    {format(new Date(order.orderDate), 'MMM dd, yyyy • h:mm a')}
-                  </Text>
-                </View>
-                <View style={styles.orderMeta}>
-                  <Text style={styles.metaLabel}>Delivery Time:</Text>
-                  <Text style={styles.metaValue}>{order.deliveryTime}</Text>
-                </View>
-                <View style={styles.orderMeta}>
-                  <Text style={styles.metaLabel}>Address:</Text>
-                  <Text style={styles.metaValue}>{order.deliveryAddress}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.orderActions}>
                 {selectedTab === 'active' && (
@@ -387,7 +406,10 @@ export default function OrdersScreen() {
                     </Button>
                     <Button
                       mode="contained"
-                      onPress={() => {/* Handle review */}}
+                      onPress={() => {
+                        // Navigate to review page or show review modal
+                        Alert.alert('Review', 'Review functionality will be implemented soon!');
+                      }}
                       style={styles.actionButton}
                     >
                       Write Review

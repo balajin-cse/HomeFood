@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   Linking,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -73,15 +74,69 @@ export default function HelpSupportScreen() {
   const handleContactSupport = (method: 'phone' | 'email' | 'chat') => {
     switch (method) {
       case 'phone':
-        Linking.openURL('tel:+1-555-HOMEFOOD');
+        const phoneNumber = '+1-555-HOMEFOOD';
+        if (Platform.OS === 'web') {
+          Alert.alert('Call Support', `Please call us at ${phoneNumber}`);
+        } else {
+          Linking.openURL(`tel:${phoneNumber}`);
+        }
         break;
       case 'email':
-        Linking.openURL('mailto:support@homefood.app');
+        const email = 'support@homefood.app';
+        if (Platform.OS === 'web') {
+          Alert.alert('Email Support', `Please email us at ${email}`);
+        } else {
+          Linking.openURL(`mailto:${email}`);
+        }
         break;
       case 'chat':
         // In a real app, this would open a chat interface
-        console.log('Opening chat support...');
+        Alert.alert('Live Chat', 'Live chat feature will be available soon! For now, please use email or phone support.');
         break;
+    }
+  };
+
+  const handleReportIssue = () => {
+    Alert.alert(
+      'Report Issue',
+      'Would you like to report an issue with a specific order or a general app issue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Order Issue', 
+          onPress: () => router.push('/(tabs)/orders')
+        },
+        { 
+          text: 'General Issue', 
+          onPress: () => Alert.alert('General Issue', 'Please contact our support team via phone or email for general issues.')
+        },
+      ]
+    );
+  };
+
+  const handleRequestRefund = () => {
+    Alert.alert(
+      'Request Refund',
+      'To request a refund, please go to your order history and select the order you want to refund, then tap "Report Issue".',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Go to Orders', 
+          onPress: () => router.push('/(tabs)/orders')
+        },
+      ]
+    );
+  };
+
+  const handleSuggestFeature = () => {
+    const email = 'feedback@homefood.app';
+    const subject = 'Feature Suggestion';
+    const body = 'I would like to suggest the following feature:\n\n';
+    
+    if (Platform.OS === 'web') {
+      Alert.alert('Suggest Feature', `Please email your suggestions to ${email}`);
+    } else {
+      Linking.openURL(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     }
   };
 
@@ -187,16 +242,19 @@ export default function HelpSupportScreen() {
               title="Report an Issue"
               variant="outline"
               style={styles.actionButton}
+              onPress={handleReportIssue}
             />
             <Button
               title="Request Refund"
               variant="outline"
               style={styles.actionButton}
+              onPress={handleRequestRefund}
             />
             <Button
               title="Suggest a Feature"
               variant="outline"
               style={styles.actionButton}
+              onPress={handleSuggestFeature}
             />
           </View>
         </Card>
@@ -211,13 +269,13 @@ export default function HelpSupportScreen() {
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Terms of Service</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/terms-privacy')}>
                 <Text style={styles.infoLink}>View</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.infoItem}>
               <Text style={styles.infoLabel}>Privacy Policy</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/terms-privacy')}>
                 <Text style={styles.infoLink}>View</Text>
               </TouchableOpacity>
             </View>
