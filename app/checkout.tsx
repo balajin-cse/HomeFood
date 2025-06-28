@@ -20,8 +20,8 @@ import { Input } from '@/components/ui/Input';
 import { useCart } from '@/contexts/CartContext';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -119,6 +119,7 @@ export default function CheckoutScreen() {
   const { cartItems, cartTotal, clearCart } = useCart();
   const { address } = useLocation();
   const { user } = useAuth();
+  const { createOrder } = useOrders();
   const params = useLocalSearchParams();
   const [selectedAddress, setSelectedAddress] = useState('home');
   const [selectedPayment, setSelectedPayment] = useState('card1');
@@ -235,16 +236,8 @@ export default function CheckoutScreen() {
     setIsPlacingOrder(true);
 
     try {
-      // Simulate order processing delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Generate order details
-      const orderId = `ORD${Date.now()}`;
-      const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
-      
-      // Get selected address and payment method
+      // Get selected address and delivery time
       const selectedAddressData = addresses.find(addr => addr.id === selectedAddress);
-      const selectedPaymentData = paymentMethods.find(payment => payment.id === selectedPayment);
       const selectedTimeData = deliveryTimes.find(time => time.id === selectedDeliveryTime);
 
       // Group items by cook to create separate orders for each cook
@@ -262,86 +255,17 @@ export default function CheckoutScreen() {
         return acc;
       }, {} as any);
 
-      // Create orders for each cook
-      const allOrders = [];
-      for (const cookOrder of Object.values(ordersByCook) as any[]) {
+      // Create orders for each cook using the order context
+      const orderPromises = Object.values(ordersByCook).map(async (cookOrder: any) => {
         const orderData = {
-          orderId: `${orderId}_${cookOrder.cookId}`,
-          trackingNumber: `${trackingNumber}_${cookOrder.cookId.slice(-4)}`,
-          items: cookOrder.items,
           cookId: cookOrder.cookId,
-          cookName: cookOrder.cookName,
-          customerName: user.name,
-          customerPhone: user.phone || '+1234567890',
-          totalPrice: cookOrder.total + (cartData.deliveryFee / Object.keys(ordersByCook).length) + (cartData.serviceFee / Object.keys(ordersByCook).length),
-          quantity: cookOrder.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-          deliveryAddress: selectedAddressData?.address || 'Unknown Address',
-          paymentMethod: selectedPaymentData?.brand ? `${selectedPaymentData.brand} ending in ${selectedPaymentData.last4}` : 'Unknown Payment',
-          deliveryTime: selectedTimeData?.time || 'ASAP',
-          deliveryInstructions: cartData.deliveryInstructions,
-          orderDate: new Date().toISOString(),
-          status: 'confirmed'
-        };
-
-        allOrders.push(orderData);
-
-        // Update cook earnings
-        await updateCookEarnings(cookOrder.cookId, cookOrder.cookName, orderData.totalPrice);
-      }
-
-      // Store orders in local storage for order history
-      try {
-        const existingOrders = await AsyncStorage.getItem('orderHistory');
-        const orders = existingOrders ? JSON.parse(existingOrders) : [];
-        orders.unshift(...allOrders); // Add all orders to beginning of array
-        
-        await AsyncStorage.setItem('orderHistory', JSON.stringify(orders));
-      } catch (storageError) {
-        console.error('Error saving orders to history:', storageError);
-      }
-
-      // Send notifications to cooks
-      try {
-        const existingNotifications = await AsyncStorage.getItem('cookNotifications');
-        const notifications = existingNotifications ? JSON.parse(existingNotifications) : [];
-        
-        for (const order of allOrders) {
-          const notification = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            cookId: order.cookId,
-            cookName: order.cookName,
-            type: 'new_order',
-            orderId: order.orderId,
-            customerName: order.customerName,
-            message: `New order received from ${order.customerName}! Order #${order.trackingNumber} for $${order.totalPrice.toFixed(2)}`,
-            timestamp: new Date().toISOString(),
-            isRead: false,
-          };
-          notifications.unshift(notification);
-        }
-        
-        await AsyncStorage.setItem('cookNotifications', JSON.stringify(notifications));
-      } catch (notificationError) {
-        console.error('Error saving cook notifications:', notificationError);
-      }
-
-      // Clear the cart after successful order
-      clearCart();
-      
-      // Show success animation
-      setShowSuccessAnimation(true);
-
-    } catch (error) {
-      console.error('Error placing order:', error);
-      Alert.alert(
-        'Order Failed',
-        'There was an error placing your order. Please try again.',
-        [{ text: 'OK' }]
-      );
-      setIsPlacingOrder(false);
-    }
-  };
-
+          items: cookOrder.items.map((item: any) => ({
+            id: item.foodId,
+            title: item.title,
+            price: item.price,
+            quantity: item.quantity,
+            cookId: item.cookId,
+            cookName: item.cookName,
   const handleSuccessAnimationComplete = () => {
     setShowSuccessAnimation(false);
     setIsPlacingOrder(false);

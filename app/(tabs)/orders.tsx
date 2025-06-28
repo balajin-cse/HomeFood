@@ -8,15 +8,15 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
-  RefreshControl,
 } from 'react-native';
+import { RefreshControl } from 'react-native';
 import { Card, Chip, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { X, TriangleAlert as AlertTriangle, MessageCircle, RefreshCw, Package, ChefHat, Clock, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -61,54 +61,13 @@ interface CookNotification {
 // Cook Orders Management Interface
 function CookOrdersInterface() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders, loading, refreshing, updateOrderStatus, refreshOrders, realTimeEnabled } = useOrders();
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  const loadOrders = async () => {
-    try {
-      const storedOrders = await AsyncStorage.getItem('orderHistory');
-      if (storedOrders) {
-        const allOrders = JSON.parse(storedOrders);
-        // Filter orders for this cook
-        const cookOrders = allOrders.filter((order: Order) => 
-          order.cookId === user?.id || order.cookName === user?.name
-        );
-        setOrders(cookOrders);
-      }
-    } catch (error) {
-      console.error('Error loading orders:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadOrders();
-    setRefreshing(false);
-  };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
-      const storedOrders = await AsyncStorage.getItem('orderHistory');
-      if (storedOrders) {
-        const allOrders = JSON.parse(storedOrders);
-        const updatedOrders = allOrders.map((order: Order) =>
-          order.orderId === orderId ? { ...order, status: newStatus } : order
-        );
-        
-        await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
-        
-        const updatedCookOrders = orders.map(order =>
-          order.orderId === orderId ? { ...order, status: newStatus } : order
-        );
-        setOrders(updatedCookOrders);
-        
-        Alert.alert('Success', `Order status updated to ${getStatusText(newStatus)}`);
-      }
+      await updateOrderStatus(orderId, newStatus);
+      Alert.alert('Success', `Order status updated to ${getStatusText(newStatus)}`);
     } catch (error) {
       console.error('Error updating order status:', error);
       Alert.alert('Error', 'Failed to update order status');
@@ -179,6 +138,11 @@ function CookOrdersInterface() {
         </View>
       </LinearGradient>
 
+      {/* Real-time Status */}
+      {realTimeEnabled && (
+        <Text style={styles.realTimeStatus}>🟢 Real-time updates active</Text>
+      )}
+
       {/* Tabs */}
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -202,7 +166,7 @@ function CookOrdersInterface() {
       <ScrollView 
         style={styles.ordersList}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -348,17 +312,12 @@ function CookOrdersInterface() {
 
 // Customer Orders Interface (existing functionality)
 function CustomerOrdersInterface() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const { orders, loading, refreshing, refreshOrders, realTimeEnabled } = useOrders();
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedOrderForReport, setSelectedOrderForReport] = useState<Order | null>(null);
   const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
-  const [reportIssue, setReportIssue] = useState({
-    issueType: '',
-    description: '',
-    contactMethod: 'email' as 'phone' | 'email',
-  });
   const [cancellationData, setCancellationData] = useState({
     reason: '',
     message: '',
@@ -386,27 +345,6 @@ function CustomerOrdersInterface() {
                 cookName: 'Maria Rodriguez',
                 price: 16.99,
                 quantity: 2,
-              }
-            ],
-            cookName: 'Maria Rodriguez',
-            cookId: 'ck-maria',
-            customerName: 'Bala',
-            totalPrice: 40.47,
-            quantity: 2,
-            status: 'preparing',
-            orderDate: new Date().toISOString(),
-            deliveryTime: '12:30 PM - 1:00 PM',
-            deliveryAddress: '123 Main St, San Francisco, CA',
-            paymentMethod: 'Visa ending in 4242',
-          },
-        ];
-        setOrders(mockOrders);
-      }
-    } catch (error) {
-      console.error('Error loading orders:', error);
-    }
-  };
-
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
       case 'confirmed':
@@ -445,149 +383,9 @@ function CustomerOrdersInterface() {
     }
   };
 
-  const sendNotificationToCook = async (notification: Omit<CookNotification, 'id' | 'timestamp' | 'isRead'>) => {
-    try {
-      const cookNotification: CookNotification = {
-        ...notification,
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        isRead: false,
-      };
-
-      const existingNotifications = await AsyncStorage.getItem('cookNotifications');
-      const notifications = existingNotifications ? JSON.parse(existingNotifications) : [];
-      notifications.unshift(cookNotification);
-      
-      await AsyncStorage.setItem('cookNotifications', JSON.stringify(notifications));
-    } catch (error) {
-      console.error('Error sending notification to cook:', error);
-    }
-  };
-
-  const handleCancelOrder = (order: Order) => {
-    if (order.status !== 'confirmed') {
-      Alert.alert(
-        'Cannot Cancel',
-        'This order cannot be cancelled as it is already being prepared or has been completed.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    setSelectedOrderForCancel(order);
-    setCancellationData({ reason: '', message: '' });
-    setShowCancelModal(true);
-  };
-
-  const confirmCancelOrder = async () => {
-    if (!selectedOrderForCancel) return;
-
-    if (!cancellationData.reason) {
-      Alert.alert('Error', 'Please select a reason for cancellation.');
-      return;
-    }
-
-    try {
-      const updatedOrders = orders.map(o => 
-        o.orderId === selectedOrderForCancel.orderId 
-          ? { 
-              ...o, 
-              status: 'cancelled' as const,
-              cancellationReason: cancellationData.reason,
-              cancellationMessage: cancellationData.message,
-            }
-          : o
-      );
-      
-      setOrders(updatedOrders);
-      await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
-
-      if (selectedOrderForCancel.cookId) {
-        await sendNotificationToCook({
-          cookId: selectedOrderForCancel.cookId,
-          cookName: selectedOrderForCancel.cookName,
-          type: 'order_cancelled',
-          orderId: selectedOrderForCancel.orderId,
-          customerName: selectedOrderForCancel.customerName || 'Customer',
-          message: `Order ${selectedOrderForCancel.trackingNumber} has been cancelled by the customer. Reason: ${cancellationData.reason}${cancellationData.message ? `. Message: ${cancellationData.message}` : ''}`,
-        });
-      }
-
-      setShowCancelModal(false);
-      setSelectedOrderForCancel(null);
-      
-      Alert.alert(
-        'Order Cancelled',
-        'Your order has been cancelled successfully. The cook has been notified. You will receive a refund within 3-5 business days.',
-        [{ text: 'OK' }]
-      );
-    } catch (error) {
-      console.error('Error cancelling order:', error);
-      Alert.alert('Error', 'Failed to cancel order. Please try again.');
-    }
-  };
-
   const handleReportIssue = (order: Order) => {
     setSelectedOrderForReport(order);
-    setReportIssue({
-      issueType: '',
-      description: '',
-      contactMethod: 'email',
-    });
     setShowReportModal(true);
-  };
-
-  const submitReportIssue = async () => {
-    if (!reportIssue.issueType || !reportIssue.description) {
-      Alert.alert('Missing Information', 'Please select an issue type and provide a description.');
-      return;
-    }
-
-    try {
-      const issueReport = {
-        id: Date.now().toString(),
-        orderId: selectedOrderForReport!.orderId,
-        issueType: reportIssue.issueType,
-        description: reportIssue.description,
-        status: 'pending' as const,
-        reportDate: new Date().toISOString(),
-        lastUpdate: new Date().toISOString(),
-        contactMethod: reportIssue.contactMethod,
-      };
-
-      try {
-        const existingIssues = await AsyncStorage.getItem('reportedIssues');
-        const issues = existingIssues ? JSON.parse(existingIssues) : [];
-        issues.unshift(issueReport);
-        
-        await AsyncStorage.setItem('reportedIssues', JSON.stringify(issues));
-      } catch (storageError) {
-        console.error('Error saving issue report:', storageError);
-      }
-
-      if (selectedOrderForReport!.cookId) {
-        await sendNotificationToCook({
-          cookId: selectedOrderForReport!.cookId,
-          cookName: selectedOrderForReport!.cookName,
-          type: 'order_issue',
-          orderId: selectedOrderForReport!.orderId,
-          customerName: selectedOrderForReport!.customerName || 'Customer',
-          message: `Issue reported for order ${selectedOrderForReport!.trackingNumber}: ${reportIssue.issueType}. ${reportIssue.description}`,
-        });
-      }
-
-      setShowReportModal(false);
-      setSelectedOrderForReport(null);
-
-      Alert.alert(
-        'Issue Reported',
-        `Thank you for reporting this issue. Our support team will contact you via ${reportIssue.contactMethod} within 24 hours to resolve this matter. The cook has also been notified. You can track the status of your report in your profile.`,
-        [{ text: 'OK' }]
-      );
-    } catch (error) {
-      console.error('Error submitting report:', error);
-      Alert.alert('Error', 'Failed to submit report. Please try again.');
-    }
   };
 
   const handleTrackOrder = (order: Order) => {
@@ -622,33 +420,17 @@ function CustomerOrdersInterface() {
 
   const displayOrders = selectedTab === 'active' ? activeOrders : orderHistory;
 
-  const issueTypes = [
-    'Order is taking too long',
-    'Wrong order received',
-    'Food quality issue',
-    'Missing items',
-    'Delivery address issue',
-    'Payment problem',
-    'Cook communication issue',
-    'Other'
-  ];
-
-  const cancellationReasons = [
-    'Changed my mind',
-    'Found a better option',
-    'Emergency came up',
-    'Delivery time too long',
-    'Cook not responding',
-    'Payment issue',
-    'Other'
-  ];
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Orders</Text>
         <Text style={styles.headerSubtitle}>Track and manage your orders</Text>
       </View>
+
+      {/* Real-time Status */}
+      {realTimeEnabled && (
+        <Text style={styles.realTimeStatus}>🟢 Real-time updates active</Text>
+      )}
 
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -669,7 +451,10 @@ function CustomerOrdersInterface() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.ordersList}>
+      <ScrollView 
+        style={styles.ordersList}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />}
+      >
         {displayOrders.length === 0 ? (
           <View style={styles.emptyState}>
             <Package size={48} color={theme.colors.onSurfaceVariant} />
@@ -777,7 +562,7 @@ function CustomerOrdersInterface() {
                     
                     <Button
                       mode="outlined"
-                      onPress={() => handleReportIssue(order)}
+                      onPress={() => Alert.alert('Cancel Order', 'Order cancellation will be available soon!')}
                       style={styles.actionButton}
                     >
                       Report Issue
@@ -821,99 +606,6 @@ function CustomerOrdersInterface() {
         )}
       </ScrollView>
 
-      {/* Cancel Order Modal */}
-      <Modal
-        visible={showCancelModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowCancelModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Cancel Order</Text>
-            <TouchableOpacity 
-              onPress={() => setShowCancelModal(false)}
-              style={styles.modalCloseButton}
-            >
-              <X size={24} color={theme.colors.onSurface} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {selectedOrderForCancel && (
-              <View style={styles.orderSummary}>
-                <Text style={styles.orderSummaryTitle}>Order Details</Text>
-                <Text style={styles.orderSummaryText}>
-                  {selectedOrderForCancel.items[0]?.title} by {selectedOrderForCancel.cookName}
-                </Text>
-                <Text style={styles.orderSummaryText}>
-                  Order #{selectedOrderForCancel.trackingNumber}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.reasonSection}>
-              <Text style={styles.sectionTitle}>Why are you cancelling?</Text>
-              <View style={styles.reasonOptions}>
-                {cancellationReasons.map((reason) => (
-                  <TouchableOpacity
-                    key={reason}
-                    style={[
-                      styles.reasonOption,
-                      cancellationData.reason === reason && styles.reasonOptionSelected
-                    ]}
-                    onPress={() => setCancellationData(prev => ({ ...prev, reason }))}
-                  >
-                    <Text style={[
-                      styles.reasonText,
-                      cancellationData.reason === reason && styles.reasonTextSelected
-                    ]}>
-                      {reason}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.messageSection}>
-              <Text style={styles.sectionTitle}>Message to Cook (Optional)</Text>
-              <Input
-                placeholder="Let the cook know why you're cancelling..."
-                value={cancellationData.message}
-                onChangeText={(text) => setCancellationData(prev => ({ ...prev, message: text }))}
-                multiline
-                numberOfLines={3}
-                style={styles.messageInput}
-              />
-            </View>
-
-            <View style={styles.warningSection}>
-              <AlertTriangle size={20} color={theme.colors.warning} />
-              <Text style={styles.warningText}>
-                The cook will be notified immediately about this cancellation. You will receive a full refund within 3-5 business days.
-              </Text>
-            </View>
-          </ScrollView>
-
-          <View style={styles.modalActions}>
-            <Button
-              mode="outlined"
-              onPress={() => setShowCancelModal(false)}
-              style={styles.modalCancelButton}
-            >
-              Keep Order
-            </Button>
-            <Button
-              mode="contained"
-              onPress={confirmCancelOrder}
-              style={[styles.modalSubmitButton, { backgroundColor: theme.colors.error }]}
-            >
-              Cancel Order
-            </Button>
-          </View>
-        </View>
-      </Modal>
-
       {/* Report Issue Modal */}
       <Modal
         visible={showReportModal}
@@ -933,86 +625,9 @@ function CustomerOrdersInterface() {
           </View>
 
           <ScrollView style={styles.modalContent}>
-            {selectedOrderForReport && (
-              <View style={styles.orderSummary}>
-                <Text style={styles.orderSummaryTitle}>Order Details</Text>
-                <Text style={styles.orderSummaryText}>
-                  {selectedOrderForReport.items[0]?.title} by {selectedOrderForReport.cookName}
-                </Text>
-                <Text style={styles.orderSummaryText}>
-                  Order #{selectedOrderForReport.trackingNumber}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.issueTypeSection}>
-              <Text style={styles.sectionTitle}>What's the issue?</Text>
-              <View style={styles.issueTypes}>
-                {issueTypes.map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.issueTypeOption,
-                      reportIssue.issueType === type && styles.issueTypeOptionSelected
-                    ]}
-                    onPress={() => setReportIssue(prev => ({ ...prev, issueType: type }))}
-                  >
-                    <Text style={[
-                      styles.issueTypeText,
-                      reportIssue.issueType === type && styles.issueTypeTextSelected
-                    ]}>
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.descriptionSection}>
-              <Text style={styles.sectionTitle}>Describe the issue</Text>
-              <Input
-                placeholder="Please provide more details about the issue..."
-                value={reportIssue.description}
-                onChangeText={(text) => setReportIssue(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={4}
-                style={styles.descriptionInput}
-              />
-            </View>
-
-            <View style={styles.contactSection}>
-              <Text style={styles.sectionTitle}>How should we contact you?</Text>
-              <View style={styles.contactOptions}>
-                <TouchableOpacity
-                  style={[
-                    styles.contactOption,
-                    reportIssue.contactMethod === 'email' && styles.contactOptionSelected
-                  ]}
-                  onPress={() => setReportIssue(prev => ({ ...prev, contactMethod: 'email' }))}
-                >
-                  <Text style={[
-                    styles.contactOptionText,
-                    reportIssue.contactMethod === 'email' && styles.contactOptionTextSelected
-                  ]}>
-                    Email
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.contactOption,
-                    reportIssue.contactMethod === 'phone' && styles.contactOptionSelected
-                  ]}
-                  onPress={() => setReportIssue(prev => ({ ...prev, contactMethod: 'phone' }))}
-                >
-                  <Text style={[
-                    styles.contactOptionText,
-                    reportIssue.contactMethod === 'phone' && styles.contactOptionTextSelected
-                  ]}>
-                    Phone
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <Text style={styles.modalPlaceholder}>
+              Issue reporting feature will be available soon. For immediate assistance, please contact support.
+            </Text>
           </ScrollView>
 
           <View style={styles.modalActions}>
@@ -1025,10 +640,10 @@ function CustomerOrdersInterface() {
             </Button>
             <Button
               mode="contained"
-              onPress={submitReportIssue}
+              onPress={() => setShowReportModal(false)}
               style={styles.modalSubmitButton}
             >
-              Submit Report
+              Close
             </Button>
           </View>
         </View>
@@ -1050,6 +665,22 @@ export default function OrdersScreen() {
 }
 
 const styles = StyleSheet.create({
+  realTimeStatus: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: theme.colors.success,
+    fontFamily: 'Inter-Medium',
+    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  modalPlaceholder: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+    padding: theme.spacing.xl,
+    lineHeight: 24,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
