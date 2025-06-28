@@ -41,6 +41,14 @@ export default function RootLayout() {
             <Stack.Screen name="food-detail" options={{ headerShown: false }} />
             <Stack.Screen name="checkout" options={{ headerShown: false }} />
             <Stack.Screen name="subscription" options={{ headerShown: false }} />
+            <Stack.Screen name="cook-registration" options={{ headerShown: false }} />
+            <Stack.Screen name="delivery-address" options={{ headerShown: false }} />
+            <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="favorites" options={{ headerShown: false }} />
+            <Stack.Screen name="help-support" options={{ headerShown: false }} />
+            <Stack.Screen name="order-history" options={{ headerShown: false }} />
+            <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
+            <Stack.Screen name="terms-privacy" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar style="auto" />
