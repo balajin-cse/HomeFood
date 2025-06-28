@@ -12,7 +12,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X, Star, Award, Clock, Users, Heart, ChefHat, Package, TrendingUp, DollarSign } from 'lucide-react-native';
+import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X, Star, Award, Clock, Users, Heart, ChefHat, TrendingUp, DollarSign, Package } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -22,7 +22,6 @@ import { MapSelector } from '@/components/MapSelector';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { EarningsProvider, useEarnings } from '@/contexts/EarningsContext';
 import { theme } from '@/constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -94,6 +93,12 @@ function CookKitchenInterface() {
   const { user } = useAuth();
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [earnings, setEarnings] = useState({
+    today: 0,
+    total: 0,
+    totalOrders: 0,
+    completedOrders: 0,
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newItem, setNewItem] = useState({
@@ -106,35 +111,91 @@ function CookKitchenInterface() {
   });
 
   useEffect(() => {
-    loadKitchenData();
+    loadCookData();
   }, []);
 
-  const loadKitchenData = async () => {
+  const loadCookData = async () => {
     try {
       // Load menu items
       const storedItems = await AsyncStorage.getItem(`menuItems_${user?.id}`);
       if (storedItems) {
         setMenuItems(JSON.parse(storedItems));
       } else {
-        // Default items for demo
-        const mockItems = [
+        // Create some default menu items for the cook
+        const defaultItems = [
           {
             id: '1',
             title: 'Homemade Pasta Carbonara',
-            description: 'Fresh pasta with tomato sauce',
-            price: 12.99,
+            description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese',
+            price: 16.99,
             mealType: 'lunch',
-            availableQuantity: 5,
-            tags: ['Italian', 'Pasta'],
+            availableQuantity: 10,
+            tags: ['Italian', 'Pasta', 'Creamy'],
             isActive: true,
             cookId: user?.id || '1',
             rating: 4.8,
             totalReviews: 23,
             image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
           },
+          {
+            id: '2',
+            title: 'Margherita Pizza',
+            description: 'Traditional Neapolitan pizza with fresh mozzarella, basil, and San Marzano tomatoes',
+            price: 19.99,
+            mealType: 'dinner',
+            availableQuantity: 8,
+            tags: ['Italian', 'Pizza', 'Traditional'],
+            isActive: true,
+            cookId: user?.id || '1',
+            rating: 4.7,
+            totalReviews: 45,
+            image: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg?auto=compress&cs=tinysrgb&w=400',
+          },
+          {
+            id: '3',
+            title: 'Osso Buco Risotto',
+            description: 'Slow-braised veal shanks with creamy saffron risotto and gremolata',
+            price: 28.99,
+            mealType: 'dinner',
+            availableQuantity: 5,
+            tags: ['Italian', 'Gourmet', 'Risotto'],
+            isActive: true,
+            cookId: user?.id || '1',
+            rating: 4.9,
+            totalReviews: 32,
+            image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+          },
+          {
+            id: '4',
+            title: 'Tiramisu',
+            description: 'Classic Italian dessert with coffee-soaked ladyfingers and mascarpone',
+            price: 8.99,
+            mealType: 'dinner',
+            availableQuantity: 12,
+            tags: ['Italian', 'Dessert', 'Coffee'],
+            isActive: true,
+            cookId: user?.id || '1',
+            rating: 4.9,
+            totalReviews: 67,
+            image: 'https://images.pexels.com/photos/6880219/pexels-photo-6880219.jpeg?auto=compress&cs=tinysrgb&w=400',
+          },
+          {
+            id: '5',
+            title: 'Bruschetta Trio',
+            description: 'Three varieties: classic tomato, mushroom, and ricotta with honey',
+            price: 12.99,
+            mealType: 'lunch',
+            availableQuantity: 15,
+            tags: ['Italian', 'Appetizer', 'Fresh'],
+            isActive: true,
+            cookId: user?.id || '1',
+            rating: 4.6,
+            totalReviews: 28,
+            image: 'https://images.pexels.com/photos/5792329/pexels-photo-5792329.jpeg?auto=compress&cs=tinysrgb&w=400',
+          },
         ];
-        setMenuItems(mockItems);
-        await AsyncStorage.setItem(`menuItems_${user?.id}`, JSON.stringify(mockItems));
+        setMenuItems(defaultItems);
+        await AsyncStorage.setItem(`menuItems_${user?.id}`, JSON.stringify(defaultItems));
       }
 
       // Load orders
@@ -145,15 +206,37 @@ function CookKitchenInterface() {
           order.cookId === user?.id || order.cookName === user?.name
         );
         setOrders(cookOrders);
+
+        // Calculate earnings
+        const today = new Date().toDateString();
+        const todayEarnings = cookOrders
+          .filter((order: any) => {
+            const orderDate = new Date(order.orderDate);
+            return orderDate.toDateString() === today && order.status === 'delivered';
+          })
+          .reduce((total: number, order: any) => total + (order.totalPrice * 0.85), 0);
+
+        const totalEarnings = cookOrders
+          .filter((order: any) => order.status === 'delivered')
+          .reduce((total: number, order: any) => total + (order.totalPrice * 0.85), 0);
+
+        const completedOrders = cookOrders.filter((order: any) => order.status === 'delivered').length;
+
+        setEarnings({
+          today: todayEarnings,
+          total: totalEarnings,
+          totalOrders: cookOrders.length,
+          completedOrders,
+        });
       }
     } catch (error) {
-      console.error('Error loading kitchen data:', error);
+      console.error('Error loading cook data:', error);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadKitchenData();
+    await loadCookData();
     setRefreshing(false);
   };
 
@@ -217,38 +300,6 @@ function CookKitchenInterface() {
   );
 
   return (
-    <EarningsProvider cookId={user?.id} cookName={user?.name}>
-      <CookKitchenContent 
-        menuItems={menuItems}
-        activeOrders={activeOrders}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        showAddForm={showAddForm}
-        setShowAddForm={setShowAddForm}
-        newItem={newItem}
-        setNewItem={setNewItem}
-        handleAddItem={handleAddItem}
-        toggleItemStatus={toggleItemStatus}
-      />
-    </EarningsProvider>
-  );
-}
-
-function CookKitchenContent({ 
-  menuItems, 
-  activeOrders, 
-  refreshing, 
-  onRefresh, 
-  showAddForm, 
-  setShowAddForm, 
-  newItem, 
-  setNewItem, 
-  handleAddItem, 
-  toggleItemStatus 
-}: any) {
-  const { earnings } = useEarnings();
-
-  return (
     <View style={styles.container}>
       {/* Header */}
       <LinearGradient
@@ -275,60 +326,26 @@ function CookKitchenContent({
         <Card style={styles.earningsCard}>
           <Text style={styles.sectionTitle}>Today's Performance</Text>
           <View style={styles.earningsGrid}>
-            <View style={styles.earningsStat}>
+            <View style={styles.earningItem}>
               <DollarSign size={24} color={theme.colors.success} />
-              <Text style={styles.earningsValue}>
-                ${earnings?.todayEarnings?.toFixed(2) || '0.00'}
-              </Text>
-              <Text style={styles.earningsLabel}>Today's Earnings</Text>
+              <Text style={styles.earningValue}>${earnings.today.toFixed(2)}</Text>
+              <Text style={styles.earningLabel}>Today's Earnings</Text>
             </View>
-            <View style={styles.earningsStat}>
+            <View style={styles.earningItem}>
               <TrendingUp size={24} color={theme.colors.primary} />
-              <Text style={styles.earningsValue}>
-                ${earnings?.totalEarnings?.toFixed(2) || '0.00'}
-              </Text>
-              <Text style={styles.earningsLabel}>Total Earnings</Text>
+              <Text style={styles.earningValue}>${earnings.total.toFixed(2)}</Text>
+              <Text style={styles.earningLabel}>Total Earnings</Text>
             </View>
-            <View style={styles.earningsStat}>
+            <View style={styles.earningItem}>
               <Package size={24} color={theme.colors.secondary} />
-              <Text style={styles.earningsValue}>{activeOrders.length}</Text>
-              <Text style={styles.earningsLabel}>Active Orders</Text>
+              <Text style={styles.earningValue}>{activeOrders.length}</Text>
+              <Text style={styles.earningLabel}>Active Orders</Text>
             </View>
-            <View style={styles.earningsStat}>
-              <ChefHat size={24} color={theme.colors.primary} />
-              <Text style={styles.earningsValue}>{menuItems.length}</Text>
-              <Text style={styles.earningsLabel}>Menu Items</Text>
+            <View style={styles.earningItem}>
+              <Star size={24} color={theme.colors.secondary} />
+              <Text style={styles.earningValue}>{earnings.completedOrders}</Text>
+              <Text style={styles.earningLabel}>Completed</Text>
             </View>
-          </View>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card style={styles.quickActionsCard}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => router.push('/(tabs)/orders')}
-            >
-              <Package size={24} color={theme.colors.primary} />
-              <Text style={styles.quickActionText}>View Orders</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => router.push('/(tabs)/delivery')}
-            >
-              <TrendingUp size={24} color={theme.colors.primary} />
-              <Text style={styles.quickActionText}>Delivery</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => setShowAddForm(true)}
-            >
-              <Plus size={24} color={theme.colors.primary} />
-              <Text style={styles.quickActionText}>Add Dish</Text>
-            </TouchableOpacity>
           </View>
         </Card>
 
@@ -342,40 +359,40 @@ function CookKitchenContent({
               </TouchableOpacity>
             </View>
             
-            {activeOrders.slice(0, 3).map((order: any) => (
-              <View key={order.orderId} style={styles.orderPreview}>
-                <View style={styles.orderInfo}>
-                  <Text style={styles.orderTitle}>
+            {activeOrders.slice(0, 3).map((order) => (
+              <View key={order.orderId} style={styles.orderPreviewItem}>
+                <View style={styles.orderPreviewInfo}>
+                  <Text style={styles.orderPreviewTitle}>
                     {order.items[0]?.title || 'Order'} 
                     {order.items.length > 1 && ` +${order.items.length - 1} more`}
                   </Text>
-                  <Text style={styles.orderCustomer}>
+                  <Text style={styles.orderPreviewCustomer}>
                     {order.customerName} • ${order.totalPrice.toFixed(2)}
                   </Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-                  <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
+                <View style={[styles.orderPreviewStatus, { backgroundColor: getStatusColor(order.status) }]}>
+                  <Text style={styles.orderPreviewStatusText}>{getStatusText(order.status)}</Text>
                 </View>
               </View>
             ))}
           </Card>
         )}
 
-        {/* Add Item Form */}
+        {/* Add Menu Item Form */}
         {showAddForm && (
           <Card style={styles.addForm}>
             <Text style={styles.formTitle}>Add New Menu Item</Text>
             
             <Input
               label="Dish Name"
-              placeholder="Enter dish name"
+              placeholder="e.g., Homemade Pasta Carbonara"
               value={newItem.title}
               onChangeText={(text) => setNewItem(prev => ({ ...prev, title: text }))}
             />
 
             <Input
               label="Description"
-              placeholder="Describe your dish"
+              placeholder="Describe your delicious dish..."
               value={newItem.description}
               onChangeText={(text) => setNewItem(prev => ({ ...prev, description: text }))}
               multiline
@@ -384,7 +401,7 @@ function CookKitchenContent({
 
             <Input
               label="Price ($)"
-              placeholder="0.00"
+              placeholder="16.99"
               value={newItem.price}
               onChangeText={(text) => setNewItem(prev => ({ ...prev, price: text }))}
               keyboardType="numeric"
@@ -392,7 +409,7 @@ function CookKitchenContent({
 
             <Input
               label="Available Quantity"
-              placeholder="How many can you make?"
+              placeholder="10"
               value={newItem.availableQuantity}
               onChangeText={(text) => setNewItem(prev => ({ ...prev, availableQuantity: text }))}
               keyboardType="numeric"
@@ -400,10 +417,33 @@ function CookKitchenContent({
 
             <Input
               label="Tags (comma separated)"
-              placeholder="e.g., Italian, Vegetarian, Spicy"
+              placeholder="Italian, Pasta, Creamy"
               value={newItem.tags}
               onChangeText={(text) => setNewItem(prev => ({ ...prev, tags: text }))}
             />
+
+            <View style={styles.mealTypeContainer}>
+              <Text style={styles.mealTypeLabel}>Meal Type:</Text>
+              <View style={styles.mealTypeButtons}>
+                {['breakfast', 'lunch', 'dinner'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.mealTypeButton,
+                      newItem.mealType === type && styles.mealTypeButtonActive
+                    ]}
+                    onPress={() => setNewItem(prev => ({ ...prev, mealType: type as any }))}
+                  >
+                    <Text style={[
+                      styles.mealTypeButtonText,
+                      newItem.mealType === type && styles.mealTypeButtonTextActive
+                    ]}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             <View style={styles.formButtons}>
               <Button
@@ -422,52 +462,59 @@ function CookKitchenContent({
         )}
 
         {/* Menu Items */}
-        <View style={styles.menuItems}>
+        <View style={styles.menuSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Menu</Text>
-            <TouchableOpacity onPress={() => setShowAddForm(true)}>
+            <Text style={styles.sectionTitle}>Your Menu ({menuItems.length})</Text>
+            <TouchableOpacity 
+              style={styles.addMenuButton}
+              onPress={() => setShowAddForm(true)}
+            >
               <Plus size={20} color={theme.colors.primary} />
+              <Text style={styles.addMenuText}>Add Item</Text>
             </TouchableOpacity>
           </View>
-          
-          {menuItems.map((item: any) => (
-            <Card key={item.id} style={styles.menuCard}>
-              <View style={styles.menuCardContent}>
+
+          <View style={styles.menuGrid}>
+            {menuItems.map((item) => (
+              <Card key={item.id} style={styles.menuCard}>
                 <Image source={{ uri: item.image }} style={styles.menuImage} />
                 <View style={styles.menuInfo}>
-                  <Text style={styles.menuTitle}>{item.title}</Text>
-                  <Text style={styles.menuDescription}>{item.description}</Text>
+                  <Text style={styles.menuTitle} numberOfLines={1}>{item.title}</Text>
                   <Text style={styles.menuPrice}>${item.price.toFixed(2)}</Text>
-                  <Text style={styles.menuQuantity}>
-                    Available: {item.availableQuantity}
-                  </Text>
+                  <Text style={styles.menuQuantity}>Available: {item.availableQuantity}</Text>
                   <View style={styles.menuTags}>
-                    {item.tags.map((tag: string) => (
-                      <View key={tag} style={styles.tag}>
-                        <Text style={styles.tagText}>{tag}</Text>
+                    {item.tags.slice(0, 2).map((tag: string) => (
+                      <View key={tag} style={styles.menuTag}>
+                        <Text style={styles.menuTagText}>{tag}</Text>
                       </View>
                     ))}
                   </View>
-                </View>
-                <View style={styles.menuActions}>
-                  <Button
-                    title={item.isActive ? 'Active' : 'Inactive'}
-                    variant={item.isActive ? 'primary' : 'outline'}
-                    size="small"
+                  <TouchableOpacity
+                    style={[
+                      styles.statusToggle,
+                      item.isActive ? styles.statusToggleActive : styles.statusToggleInactive
+                    ]}
                     onPress={() => toggleItemStatus(item.id)}
-                  />
+                  >
+                    <Text style={[
+                      styles.statusToggleText,
+                      item.isActive ? styles.statusToggleTextActive : styles.statusToggleTextInactive
+                    ]}>
+                      {item.isActive ? 'Active' : 'Inactive'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              </View>
-            </Card>
-          ))}
+              </Card>
+            ))}
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-// Customer Discovery Interface (existing functionality)
-function CustomerDiscoveryInterface() {
+// Customer Discover Interface (existing functionality)
+function CustomerDiscoverInterface() {
   const { address, updateLocation } = useLocation();
   const { user } = useAuth();
   const { isSubscribed } = useSubscription();
@@ -507,19 +554,16 @@ function CustomerDiscoveryInterface() {
   useEffect(() => {
     loadFoodItems();
     loadCooks();
-    // Set default address if none selected
     if (!selectedAddress && savedAddresses.length > 0) {
       setSelectedAddress(savedAddresses[0]);
     }
     
-    // Check if we have a cook filter from navigation params
     if (params.cookId) {
       setSelectedCookId(params.cookId as string);
     }
   }, [params.cookId]);
 
   const loadCooks = async () => {
-    // Enhanced mock cook data with detailed profiles
     const mockCooks: CookProfile[] = [
       {
         id: '1',
@@ -555,200 +599,64 @@ function CustomerDiscoveryInterface() {
         location: 'Mission District, SF',
         distance: 0.8,
       },
-      {
-        id: '3',
-        name: 'David Chen',
-        avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.8,
-        totalReviews: 312,
-        yearsExperience: 12,
-        specialties: ['Asian Fusion', 'Seafood', 'Gourmet'],
-        totalOrders: 1580,
-        responseTime: '< 10 min',
-        isVerified: true,
-        badges: ['Master Chef', 'Premium Quality', 'Lightning Fast'],
-        joinedDate: '2018-01-10',
-        bio: 'Former Michelin-starred restaurant chef now bringing gourmet experiences to home dining. Specializing in fresh seafood and Asian fusion.',
-        location: 'Chinatown, SF',
-        distance: 2.1,
-      },
-      {
-        id: '4',
-        name: 'Kenji Tanaka',
-        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.9,
-        totalReviews: 156,
-        yearsExperience: 15,
-        specialties: ['Japanese', 'Ramen', 'Traditional'],
-        totalOrders: 720,
-        responseTime: '< 25 min',
-        isVerified: true,
-        badges: ['Authentic Master', 'Traditional Recipes'],
-        joinedDate: '2021-02-14',
-        bio: 'Third-generation ramen master from Tokyo. I bring authentic Japanese flavors and traditional techniques to every bowl.',
-        location: 'Japantown, SF',
-        distance: 1.5,
-      },
     ];
     setCooks(mockCooks);
   };
 
   const loadFoodItems = async () => {
-    // Enhanced mock data with detailed food ratings and cook information
-    const mockFoodItems: FoodItem[] = [
-      {
-        id: '1',
-        title: 'Homemade Pasta Carbonara',
-        description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese made with love',
-        price: 16.99,
-        image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '1',
-        cookName: 'Maria Rodriguez',
-        cookRating: 4.9,
-        distance: 1.2,
-        prepTime: 25,
-        mealType: 'lunch',
-        tags: ['Italian', 'Pasta', 'Creamy', 'Comfort Food'],
-        foodRating: 4.8,
-        totalFoodReviews: 89,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Eggs', 'Dairy', 'Gluten'],
-        nutritionInfo: {
-          calories: 520,
-          protein: 22,
-          carbs: 45,
-          fat: 28,
-        },
-      },
-      {
-        id: '2',
-        title: 'Artisan Avocado Toast',
-        description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, microgreens, and hemp seeds',
-        price: 12.50,
-        image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '2',
-        cookName: 'Sarah Johnson',
-        cookRating: 4.7,
-        distance: 0.8,
-        prepTime: 15,
-        mealType: 'breakfast',
-        tags: ['Healthy', 'Vegetarian', 'Fresh', 'Organic'],
-        foodRating: 4.6,
-        totalFoodReviews: 67,
-        isPopular: false,
-        isNew: true,
-        allergens: ['Gluten'],
-        nutritionInfo: {
-          calories: 320,
-          protein: 12,
-          carbs: 35,
-          fat: 18,
-        },
-      },
-      {
-        id: '3',
-        title: 'Pan-Seared Salmon',
-        description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
-        price: 24.99,
-        image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '3',
-        cookName: 'David Chen',
-        cookRating: 4.8,
-        distance: 2.1,
-        prepTime: 35,
-        mealType: 'dinner',
-        tags: ['Seafood', 'Healthy', 'Gourmet', 'Protein Rich'],
-        foodRating: 4.9,
-        totalFoodReviews: 124,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Fish'],
-        nutritionInfo: {
-          calories: 450,
-          protein: 35,
-          carbs: 25,
-          fat: 22,
-        },
-      },
-      {
-        id: '4',
-        title: 'Authentic Ramen Bowl',
-        description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
-        price: 18.99,
-        image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '4',
-        cookName: 'Kenji Tanaka',
-        cookRating: 4.9,
-        distance: 1.5,
-        prepTime: 45,
-        mealType: 'lunch',
-        tags: ['Japanese', 'Ramen', 'Comfort Food', 'Authentic'],
-        foodRating: 4.9,
-        totalFoodReviews: 156,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Eggs', 'Gluten', 'Soy'],
-        nutritionInfo: {
-          calories: 680,
-          protein: 28,
-          carbs: 65,
-          fat: 32,
-        },
-      },
-      // Additional items for Maria Rodriguez
-      {
-        id: '5',
-        title: 'Margherita Pizza',
-        description: 'Traditional Neapolitan pizza with fresh mozzarella, basil, and San Marzano tomatoes',
-        price: 19.99,
-        image: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '1',
-        cookName: 'Maria Rodriguez',
-        cookRating: 4.9,
-        distance: 1.2,
-        prepTime: 30,
-        mealType: 'dinner',
-        tags: ['Italian', 'Pizza', 'Traditional', 'Vegetarian'],
-        foodRating: 4.7,
-        totalFoodReviews: 45,
-        isPopular: false,
-        isNew: false,
-        allergens: ['Dairy', 'Gluten'],
-        nutritionInfo: {
-          calories: 420,
-          protein: 18,
-          carbs: 52,
-          fat: 16,
-        },
-      },
-      {
-        id: '6',
-        title: 'Osso Buco Risotto',
-        description: 'Slow-braised veal shanks with creamy saffron risotto and gremolata',
-        price: 28.99,
-        image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
-        cookId: '1',
-        cookName: 'Maria Rodriguez',
-        cookRating: 4.9,
-        distance: 1.2,
-        prepTime: 60,
-        mealType: 'dinner',
-        tags: ['Italian', 'Gourmet', 'Risotto', 'Meat'],
-        foodRating: 4.9,
-        totalFoodReviews: 32,
-        isPopular: true,
-        isNew: false,
-        allergens: ['Dairy', 'Gluten'],
-        nutritionInfo: {
-          calories: 650,
-          protein: 42,
-          carbs: 48,
-          fat: 28,
-        },
-      },
-    ];
-    setFoodItems(mockFoodItems);
+    try {
+      // Load all menu items from all cooks
+      const allFoodItems: FoodItem[] = [];
+      
+      // Load items from cook storage
+      const cookIds = ['ck-maria', 'ck-sarah', 'ck-david', 'ck-kenji', 'ck-elena', 'ck-marcus'];
+      
+      for (const cookId of cookIds) {
+        try {
+          const storedItems = await AsyncStorage.getItem(`menuItems_${cookId}`);
+          if (storedItems) {
+            const items = JSON.parse(storedItems);
+            const formattedItems = items.map((item: any) => ({
+              ...item,
+              cookId: cookId,
+              cookName: getCookNameById(cookId),
+              cookRating: 4.8,
+              distance: Math.random() * 3 + 0.5,
+              foodRating: item.rating || 4.5,
+              totalFoodReviews: item.totalReviews || 25,
+              isPopular: Math.random() > 0.7,
+              isNew: Math.random() > 0.8,
+              allergens: ['Gluten', 'Dairy'],
+              nutritionInfo: {
+                calories: 450,
+                protein: 25,
+                carbs: 35,
+                fat: 20,
+              },
+            }));
+            allFoodItems.push(...formattedItems);
+          }
+        } catch (error) {
+          console.error(`Error loading items for cook ${cookId}:`, error);
+        }
+      }
+
+      setFoodItems(allFoodItems);
+    } catch (error) {
+      console.error('Error loading food items:', error);
+    }
+  };
+
+  const getCookNameById = (cookId: string): string => {
+    const cookNames: { [key: string]: string } = {
+      'ck-maria': 'Maria Rodriguez',
+      'ck-sarah': 'Sarah Johnson',
+      'ck-david': 'David Chen',
+      'ck-kenji': 'Kenji Tanaka',
+      'ck-elena': 'Elena Papadopoulos',
+      'ck-marcus': 'Marcus Campbell',
+    };
+    return cookNames[cookId] || 'Unknown Cook';
   };
 
   const onRefresh = async () => {
@@ -851,7 +759,7 @@ function CustomerDiscoveryInterface() {
         showsVerticalScrollIndicator={false}
         stickyHeaderIndices={[0]}
       >
-        {/* Header - Fixed Width */}
+        {/* Header */}
         <View style={styles.headerContainer}>
           <LinearGradient
             colors={[theme.colors.primary, theme.colors.primaryDark]}
@@ -948,7 +856,7 @@ function CustomerDiscoveryInterface() {
           ))}
         </ScrollView>
 
-        {/* Premium Banner - Only show if not subscribed */}
+        {/* Premium Banner */}
         {!isSubscribed && (
           <TouchableOpacity 
             onPress={() => router.push('/subscription')}
@@ -1008,6 +916,7 @@ function CustomerDiscoveryInterface() {
         </View>
       </ScrollView>
 
+      {/* Modals */}
       {/* Cook Profile Modal */}
       <Modal
         visible={showCookProfile}
@@ -1028,7 +937,6 @@ function CustomerDiscoveryInterface() {
             </View>
 
             <ScrollView style={styles.modalContent}>
-              {/* Cook Header */}
               <View style={styles.cookProfileHeader}>
                 <Image source={{ uri: selectedCook.avatar }} style={styles.cookProfileAvatar} />
                 <View style={styles.cookProfileInfo}>
@@ -1050,54 +958,6 @@ function CustomerDiscoveryInterface() {
                 </View>
               </View>
 
-              {/* Cook Stats */}
-              <View style={styles.cookStats}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{selectedCook.yearsExperience}</Text>
-                  <Text style={styles.statLabel}>Years Experience</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{selectedCook.totalOrders}</Text>
-                  <Text style={styles.statLabel}>Total Orders</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{selectedCook.responseTime}</Text>
-                  <Text style={styles.statLabel}>Response Time</Text>
-                </View>
-              </View>
-
-              {/* Badges */}
-              <View style={styles.cookBadges}>
-                <Text style={styles.sectionTitle}>Achievements</Text>
-                <View style={styles.badgesList}>
-                  {selectedCook.badges.map((badge, index) => (
-                    <View key={index} style={styles.achievementBadge}>
-                      <Award size={16} color={theme.colors.primary} />
-                      <Text style={styles.achievementText}>{badge}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Specialties */}
-              <View style={styles.cookSpecialties}>
-                <Text style={styles.sectionTitle}>Specialties</Text>
-                <View style={styles.specialtiesList}>
-                  {selectedCook.specialties.map((specialty, index) => (
-                    <View key={index} style={styles.specialtyTag}>
-                      <Text style={styles.specialtyText}>{specialty}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-
-              {/* Bio */}
-              <View style={styles.cookBio}>
-                <Text style={styles.sectionTitle}>About</Text>
-                <Text style={styles.bioText}>{selectedCook.bio}</Text>
-              </View>
-
-              {/* Action Buttons */}
               <View style={styles.cookActions}>
                 <Button
                   title="View Menu"
@@ -1140,7 +1000,6 @@ function CustomerDiscoveryInterface() {
           </View>
 
           <ScrollView style={styles.modalContent}>
-            {/* Current Location Option */}
             <TouchableOpacity 
               style={styles.addressOption}
               onPress={() => {
@@ -1162,7 +1021,6 @@ function CustomerDiscoveryInterface() {
               </View>
             </TouchableOpacity>
 
-            {/* Saved Addresses */}
             <View style={styles.savedAddressesSection}>
               <Text style={styles.sectionTitle}>Saved Addresses</Text>
               {savedAddresses.map((addr) => (
@@ -1188,7 +1046,6 @@ function CustomerDiscoveryInterface() {
               ))}
             </View>
 
-            {/* Add New Address */}
             <TouchableOpacity 
               style={styles.addAddressButton}
               onPress={() => {
@@ -1268,7 +1125,7 @@ export default function HomeScreen() {
     return <CookKitchenInterface />;
   }
 
-  return <CustomerDiscoveryInterface />;
+  return <CustomerDiscoverInterface />;
 }
 
 const styles = StyleSheet.create({
@@ -1298,9 +1155,11 @@ const styles = StyleSheet.create({
   headerContent: {
     gap: theme.spacing.md,
     width: '100%',
+    alignItems: 'center',
   },
   greetingSection: {
     gap: theme.spacing.xs,
+    alignItems: 'center',
   },
   greeting: {
     fontSize: 16,
@@ -1312,6 +1171,21 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: 'white',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: 'white',
+    opacity: 0.9,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   locationSection: {
     flexDirection: 'row',
@@ -1333,188 +1207,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: theme.spacing.lg,
-  },
-  earningsCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  earningsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  earningsStat: {
-    width: '48%',
-    alignItems: 'center',
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-  },
-  earningsValue: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginVertical: theme.spacing.sm,
-  },
-  earningsLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
-  quickActionsCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  quickActionButton: {
-    flex: 1,
-    alignItems: 'center',
-    padding: theme.spacing.md,
-    marginHorizontal: theme.spacing.xs,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-  },
-  quickActionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-    marginTop: theme.spacing.sm,
-  },
-  ordersPreviewCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-  },
-  viewAllText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
-  },
-  orderPreview: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.outline,
-  },
-  orderInfo: {
-    flex: 1,
-  },
-  orderTitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.xs,
-  },
-  orderCustomer: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-  },
-  statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  statusText: {
-    fontSize: 10,
-    fontFamily: 'Inter-Bold',
-    color: 'white',
-  },
-  addForm: {
-    marginBottom: theme.spacing.lg,
-  },
-  formTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.lg,
-  },
-  formButtons: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.md,
-  },
-  cancelButton: {
-    flex: 1,
-  },
-  addButton: {
-    flex: 1,
-  },
-  menuItems: {
-    gap: theme.spacing.md,
-  },
-  menuCard: {
-    padding: theme.spacing.md,
-  },
-  menuCardContent: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-  },
-  menuImage: {
-    width: 80,
-    height: 80,
-    borderRadius: theme.borderRadius.md,
-  },
-  menuInfo: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.xs,
-  },
-  menuDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    marginBottom: theme.spacing.sm,
-  },
-  menuPrice: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  menuQuantity: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    marginBottom: theme.spacing.sm,
-  },
-  menuTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-  tag: {
-    backgroundColor: theme.colors.surfaceVariant,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  tagText: {
-    fontSize: 10,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurfaceVariant,
-  },
-  menuActions: {
-    justifyContent: 'center',
+    marginTop: -theme.spacing.lg,
   },
   searchSection: {
     flexDirection: 'row',
@@ -1759,81 +1452,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: theme.colors.onSurface,
   },
-  cookStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
-  cookBadges: {
-    marginBottom: theme.spacing.xl,
-  },
-  badgesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  achievementBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  achievementText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
-  },
-  cookSpecialties: {
-    marginBottom: theme.spacing.xl,
-  },
-  specialtiesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  specialtyTag: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-  },
-  specialtyText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  cookBio: {
-    marginBottom: theme.spacing.xl,
-  },
-  bioText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
   cookActions: {
     flexDirection: 'row',
     gap: theme.spacing.md,
@@ -1876,6 +1494,12 @@ const styles = StyleSheet.create({
   savedAddressesSection: {
     marginBottom: theme.spacing.xl,
   },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+  },
   addAddressButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1892,5 +1516,224 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: theme.colors.primary,
+  },
+  // Cook Kitchen Interface Styles
+  earningsCard: {
+    margin: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  earningsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  earningItem: {
+    width: '48%',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  earningValue: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginVertical: theme.spacing.sm,
+  },
+  earningLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  ordersPreviewCard: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  orderPreviewItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
+  },
+  orderPreviewInfo: {
+    flex: 1,
+  },
+  orderPreviewTitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.xs,
+  },
+  orderPreviewCustomer: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  orderPreviewStatus: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  orderPreviewStatusText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+  },
+  addForm: {
+    marginHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.lg,
+  },
+  mealTypeLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.md,
+  },
+  mealTypeButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  mealTypeButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  mealTypeButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  mealTypeButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  mealTypeButtonTextActive: {
+    color: 'white',
+  },
+  formButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+  },
+  cancelButton: {
+    flex: 1,
+  },
+  addButton: {
+    flex: 1,
+  },
+  menuSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  addMenuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  addMenuText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  menuGrid: {
+    gap: theme.spacing.md,
+  },
+  menuCard: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    gap: theme.spacing.md,
+  },
+  menuImage: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.borderRadius.md,
+  },
+  menuInfo: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.xs,
+  },
+  menuPrice: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  menuQuantity: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.sm,
+  },
+  menuTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  menuTag: {
+    backgroundColor: theme.colors.surfaceVariant,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  menuTagText: {
+    fontSize: 10,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+  },
+  statusToggle: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    alignSelf: 'flex-start',
+  },
+  statusToggleActive: {
+    backgroundColor: theme.colors.success,
+  },
+  statusToggleInactive: {
+    backgroundColor: theme.colors.outline,
+  },
+  statusToggleText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+  },
+  statusToggleTextActive: {
+    color: 'white',
+  },
+  statusToggleTextInactive: {
+    color: theme.colors.onSurfaceVariant,
   },
 });
