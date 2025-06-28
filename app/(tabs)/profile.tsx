@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
-import { X, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, MessageCircle } from 'lucide-react-native';
+import { X, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, MessageCircle, LogIn, LogOut } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ReportedIssue {
@@ -62,6 +62,10 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleLogin = () => {
+    router.push('/auth');
+  };
+
   const getStatusIcon = (status: ReportedIssue['status']) => {
     switch (status) {
       case 'pending':
@@ -101,121 +105,159 @@ export default function ProfileScreen() {
       title: 'Edit Profile',
       icon: 'account-edit',
       onPress: () => router.push('/edit-profile'),
+      requiresAuth: true,
     },
     {
       title: 'Delivery Address',
       icon: 'map-marker',
       onPress: () => router.push('/delivery-address'),
+      requiresAuth: true,
     },
     {
       title: 'Payment Methods',
       icon: 'credit-card',
       onPress: () => router.push('/payment-methods'),
+      requiresAuth: true,
     },
     {
       title: 'Order History',
       icon: 'history',
       onPress: () => router.push('/order-history'),
+      requiresAuth: true,
     },
     {
       title: 'Favorites',
       icon: 'heart',
       onPress: () => router.push('/favorites'),
+      requiresAuth: true,
     },
     {
       title: 'Help & Support',
       icon: 'help-circle',
       onPress: () => router.push('/help-support'),
+      requiresAuth: false,
     },
     {
       title: 'Terms & Privacy',
       icon: 'file-document',
       onPress: () => router.push('/terms-privacy'),
+      requiresAuth: false,
     },
   ];
 
+  // Filter menu items based on authentication status
+  const availableMenuItems = menuItems.filter(item => !item.requiresAuth || user);
+
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Avatar.Text
-          size={80}
-          label={user?.name?.charAt(0) || 'U'}
-          style={styles.avatar}
-        />
-        <Text style={styles.userName}>{user?.name}</Text>
-        <Text style={styles.userEmail}>{user?.email}</Text>
-        {user?.isCook && (
-          <Text style={styles.cookBadge}>🍳 Home Cook</Text>
-        )}
-      </View>
-
-      <Card style={styles.subscriptionCard}>
-        <View style={styles.subscriptionContent}>
-          <Text style={styles.subscriptionTitle}>Subscription Status</Text>
-          {isSubscribed ? (
-            <View>
-              <Text style={styles.subscriptionStatus}>✅ Premium Member</Text>
-              <Text style={styles.subscriptionDetails}>
-                Enjoy unlimited access to homemade meals
-              </Text>
-            </View>
-          ) : (
-            <View>
-              <Text style={styles.subscriptionStatus}>❌ Free Account</Text>
-              <Text style={styles.subscriptionDetails}>
-                Subscribe to order from home cooks
-              </Text>
-              <Button
-                mode="contained"
-                onPress={() => router.push('/subscription')}
-                style={styles.subscribeButton}
-              >
-                Subscribe Now
-              </Button>
-            </View>
+      {user ? (
+        // Authenticated User Header
+        <View style={styles.header}>
+          <Avatar.Text
+            size={80}
+            label={user.name?.charAt(0) || 'U'}
+            style={styles.avatar}
+          />
+          <Text style={styles.userName}>{user.name}</Text>
+          <Text style={styles.userEmail}>{user.email}</Text>
+          {user.isCook && (
+            <Text style={styles.cookBadge}>🍳 Home Cook</Text>
           )}
         </View>
-      </Card>
-
-      {/* Reported Issues Section */}
-      <Card style={styles.issuesCard}>
-        <View style={styles.issuesHeader}>
-          <Text style={styles.sectionTitle}>Reported Issues</Text>
-          <TouchableOpacity onPress={() => setShowIssuesModal(true)}>
-            <Text style={styles.viewAllText}>View All ({reportedIssues.length})</Text>
-          </TouchableOpacity>
+      ) : (
+        // Guest User Header
+        <View style={styles.guestHeader}>
+          <Avatar.Icon
+            size={80}
+            icon="account"
+            style={styles.guestAvatar}
+          />
+          <Text style={styles.guestTitle}>Welcome to HomeFood</Text>
+          <Text style={styles.guestSubtitle}>
+            Sign in to access your profile, orders, and favorites
+          </Text>
+          <Button
+            mode="contained"
+            onPress={handleLogin}
+            style={styles.loginButton}
+            icon={() => <LogIn size={20} color="white" />}
+          >
+            Sign In
+          </Button>
         </View>
-        
-        {reportedIssues.length === 0 ? (
-          <Text style={styles.noIssuesText}>No issues reported</Text>
-        ) : (
-          <View style={styles.recentIssues}>
-            {reportedIssues.slice(0, 3).map((issue) => (
-              <TouchableOpacity
-                key={issue.id}
-                style={styles.issueItem}
-                onPress={() => handleIssuePress(issue)}
-              >
-                <View style={styles.issueHeader}>
-                  <Text style={styles.issueType} numberOfLines={1}>
-                    {issue.issueType}
+      )}
+
+      {user && (
+        <>
+          <Card style={styles.subscriptionCard}>
+            <View style={styles.subscriptionContent}>
+              <Text style={styles.subscriptionTitle}>Subscription Status</Text>
+              {isSubscribed ? (
+                <View>
+                  <Text style={styles.subscriptionStatus}>✅ Premium Member</Text>
+                  <Text style={styles.subscriptionDetails}>
+                    Enjoy unlimited access to homemade meals
                   </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(issue.status) }]}>
-                    {getStatusIcon(issue.status)}
-                    <Text style={styles.statusText}>{issue.status}</Text>
-                  </View>
                 </View>
-                <Text style={styles.issueDescription} numberOfLines={2}>
-                  {issue.description}
-                </Text>
-                <Text style={styles.issueDate}>
-                  {new Date(issue.reportDate).toLocaleDateString()}
-                </Text>
+              ) : (
+                <View>
+                  <Text style={styles.subscriptionStatus}>❌ Free Account</Text>
+                  <Text style={styles.subscriptionDetails}>
+                    Subscribe to order from home cooks
+                  </Text>
+                  <Button
+                    mode="contained"
+                    onPress={() => router.push('/subscription')}
+                    style={styles.subscribeButton}
+                  >
+                    Subscribe Now
+                  </Button>
+                </View>
+              )}
+            </View>
+          </Card>
+
+          {/* Reported Issues Section */}
+          <Card style={styles.issuesCard}>
+            <View style={styles.issuesHeader}>
+              <Text style={styles.sectionTitle}>Reported Issues</Text>
+              <TouchableOpacity onPress={() => setShowIssuesModal(true)}>
+                <Text style={styles.viewAllText}>View All ({reportedIssues.length})</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </Card>
+            </View>
+            
+            {reportedIssues.length === 0 ? (
+              <Text style={styles.noIssuesText}>No issues reported</Text>
+            ) : (
+              <View style={styles.recentIssues}>
+                {reportedIssues.slice(0, 3).map((issue) => (
+                  <TouchableOpacity
+                    key={issue.id}
+                    style={styles.issueItem}
+                    onPress={() => handleIssuePress(issue)}
+                  >
+                    <View style={styles.issueHeader}>
+                      <Text style={styles.issueType} numberOfLines={1}>
+                        {issue.issueType}
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(issue.status) }]}>
+                        {getStatusIcon(issue.status)}
+                        <Text style={styles.statusText}>{issue.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.issueDescription} numberOfLines={2}>
+                      {issue.description}
+                    </Text>
+                    <Text style={styles.issueDate}>
+                      {new Date(issue.reportDate).toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </Card>
+        </>
+      )}
 
       {!user?.isCook && (
         <Card style={styles.cookCard}>
@@ -239,19 +281,21 @@ export default function ProfileScreen() {
         <List.Section>
           <List.Subheader>Settings</List.Subheader>
           
-          <List.Item
-            title="Push Notifications"
-            left={props => <List.Icon {...props} icon="bell" />}
-            right={() => (
-              <Switch
-                value={notifications}
-                onValueChange={setNotifications}
-                color={theme.colors.primary}
-              />
-            )}
-          />
+          {user && (
+            <List.Item
+              title="Push Notifications"
+              left={props => <List.Icon {...props} icon="bell" />}
+              right={() => (
+                <Switch
+                  value={notifications}
+                  onValueChange={setNotifications}
+                  color={theme.colors.primary}
+                />
+              )}
+            />
+          )}
 
-          {menuItems.map((item, index) => (
+          {availableMenuItems.map((item, index) => (
             <List.Item
               key={index}
               title={item.title}
@@ -263,10 +307,19 @@ export default function ProfileScreen() {
         </List.Section>
       </Card>
 
-      <Card style={styles.dangerCard}>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+      {/* Authentication Actions */}
+      <Card style={styles.authCard}>
+        {user ? (
+          <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
+            <LogOut size={20} color={theme.colors.error} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={handleLogin} style={styles.authButton}>
+            <LogIn size={20} color={theme.colors.primary} />
+            <Text style={styles.loginText}>Sign In</Text>
+          </TouchableOpacity>
+        )}
       </Card>
 
       <View style={styles.footer}>
@@ -431,11 +484,28 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: theme.colors.primary,
   },
+  guestHeader: {
+    alignItems: 'center',
+    padding: 30,
+    paddingTop: 60,
+    backgroundColor: theme.colors.primary,
+  },
   avatar: {
     backgroundColor: theme.colors.secondary,
     marginBottom: 15,
   },
+  guestAvatar: {
+    backgroundColor: theme.colors.secondary,
+    marginBottom: 15,
+  },
   userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5,
+    fontFamily: 'Inter-Bold',
+  },
+  guestTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
@@ -449,6 +519,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontFamily: 'Inter-Regular',
   },
+  guestSubtitle: {
+    fontSize: 16,
+    color: 'white',
+    opacity: 0.9,
+    marginBottom: 20,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+  },
   cookBadge: {
     fontSize: 16,
     color: 'white',
@@ -457,6 +535,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 15,
     fontFamily: 'Inter-Medium',
+  },
+  loginButton: {
+    marginTop: 10,
   },
   subscriptionCard: {
     margin: 20,
@@ -591,18 +672,27 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     elevation: 2,
   },
-  dangerCard: {
+  authCard: {
     marginHorizontal: 20,
     marginBottom: 20,
     elevation: 2,
   },
-  logoutButton: {
-    padding: 20,
+  authButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 10,
   },
   logoutText: {
     fontSize: 16,
-    color: '#F44336',
+    color: theme.colors.error,
+    fontWeight: 'bold',
+    fontFamily: 'Inter-Bold',
+  },
+  loginText: {
+    fontSize: 16,
+    color: theme.colors.primary,
     fontWeight: 'bold',
     fontFamily: 'Inter-Bold',
   },

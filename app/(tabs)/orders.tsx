@@ -4,8 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Alert,
+  TouchableOpacity,
   Modal,
   Platform,
 } from 'react-native';
@@ -22,6 +22,8 @@ interface Order {
   trackingNumber: string;
   items: any[];
   cookName: string;
+  cookId?: string;
+  customerName?: string;
   totalPrice: number;
   quantity: number;
   status: 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'delivered' | 'cancelled';
@@ -30,6 +32,8 @@ interface Order {
   deliveryAddress: string;
   paymentMethod: string;
   deliveryInstructions?: string;
+  cancellationReason?: string;
+  cancellationMessage?: string;
 }
 
 interface ReportIssueData {
@@ -39,15 +43,33 @@ interface ReportIssueData {
   contactMethod: 'phone' | 'email';
 }
 
+interface CookNotification {
+  id: string;
+  cookId: string;
+  cookName: string;
+  type: 'order_cancelled' | 'order_issue';
+  orderId: string;
+  customerName: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+}
+
 export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedOrderForReport, setSelectedOrderForReport] = useState<Order | null>(null);
+  const [selectedOrderForCancel, setSelectedOrderForCancel] = useState<Order | null>(null);
   const [reportIssue, setReportIssue] = useState({
     issueType: '',
     description: '',
     contactMethod: 'email' as 'phone' | 'email',
+  });
+  const [cancellationData, setCancellationData] = useState({
+    reason: '',
+    message: '',
   });
 
   useEffect(() => {
@@ -77,6 +99,8 @@ export default function OrdersScreen() {
               }
             ],
             cookName: 'Maria Rodriguez',
+            cookId: 'ck-maria',
+            customerName: 'Bala',
             totalPrice: 40.47,
             quantity: 2,
             status: 'preparing',
@@ -131,6 +155,26 @@ export default function OrdersScreen() {
     }
   };
 
+  const sendNotificationToCook = async (notification: Omit<CookNotification, 'id' | 'timestamp' | 'isRead'>) => {
+    try {
+      const cookNotification: CookNotification = {
+        ...notification,
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        isRead: false,
+      };
+
+      // Store notification for the cook
+      const existingNotifications = await AsyncStorage.getItem('cookNotifications');
+      const notifications = existingNotifications ? JSON.parse(existingNotifications) : [];
+      notifications.unshift(cookNotification);
+      
+      await AsyncStorage.setItem('cookNotifications', JSON.stringify(notifications));
+    } catch (error) {
+      console.error('Error sending notification to cook:', error);
+    }
+  };
+
   const handleCancelOrder = (order: Order) => {
     // Only allow cancellation for confirmed orders
     if (order.status !== 'confirmed') {
@@ -142,39 +186,59 @@ export default function OrdersScreen() {
       return;
     }
 
-    Alert.alert(
-      'Cancel Order',
-      `Are you sure you want to cancel your order for ${order.items[0]?.title}? This action cannot be undone.`,
-      [
-        { text: 'Keep Order', style: 'cancel' },
-        {
-          text: 'Cancel Order',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Update order status to cancelled
-              const updatedOrders = orders.map(o => 
-                o.orderId === order.orderId 
-                  ? { ...o, status: 'cancelled' as const }
-                  : o
-              );
-              
-              setOrders(updatedOrders);
-              await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
-              
-              Alert.alert(
-                'Order Cancelled',
-                'Your order has been cancelled successfully. You will receive a refund within 3-5 business days.',
-                [{ text: 'OK' }]
-              );
-            } catch (error) {
-              console.error('Error cancelling order:', error);
-              Alert.alert('Error', 'Failed to cancel order. Please try again.');
+    setSelectedOrderForCancel(order);
+    setCancellationData({ reason: '', message: '' });
+    setShowCancelModal(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!selectedOrderForCancel) return;
+
+    if (!cancellationData.reason) {
+      Alert.alert('Error', 'Please select a reason for cancellation.');
+      return;
+    }
+
+    try {
+      // Update order status to cancelled
+      const updatedOrders = orders.map(o => 
+        o.orderId === selectedOrderForCancel.orderId 
+          ? { 
+              ...o, 
+              status: 'cancelled' as const,
+              cancellationReason: cancellationData.reason,
+              cancellationMessage: cancellationData.message,
             }
-          }
-        }
-      ]
-    );
+          : o
+      );
+      
+      setOrders(updatedOrders);
+      await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
+
+      // Send notification to cook
+      if (selectedOrderForCancel.cookId) {
+        await sendNotificationToCook({
+          cookId: selectedOrderForCancel.cookId,
+          cookName: selectedOrderForCancel.cookName,
+          type: 'order_cancelled',
+          orderId: selectedOrderForCancel.orderId,
+          customerName: selectedOrderForCancel.customerName || 'Customer',
+          message: `Order ${selectedOrderForCancel.trackingNumber} has been cancelled by the customer. Reason: ${cancellationData.reason}${cancellationData.message ? `. Message: ${cancellationData.message}` : ''}`,
+        });
+      }
+
+      setShowCancelModal(false);
+      setSelectedOrderForCancel(null);
+      
+      Alert.alert(
+        'Order Cancelled',
+        'Your order has been cancelled successfully. The cook has been notified. You will receive a refund within 3-5 business days.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      Alert.alert('Error', 'Failed to cancel order. Please try again.');
+    }
   };
 
   const handleReportIssue = (order: Order) => {
@@ -217,12 +281,24 @@ export default function OrdersScreen() {
         console.error('Error saving issue report:', storageError);
       }
 
+      // Send notification to cook if it's an order-related issue
+      if (selectedOrderForReport!.cookId) {
+        await sendNotificationToCook({
+          cookId: selectedOrderForReport!.cookId,
+          cookName: selectedOrderForReport!.cookName,
+          type: 'order_issue',
+          orderId: selectedOrderForReport!.orderId,
+          customerName: selectedOrderForReport!.customerName || 'Customer',
+          message: `Issue reported for order ${selectedOrderForReport!.trackingNumber}: ${reportIssue.issueType}. ${reportIssue.description}`,
+        });
+      }
+
       setShowReportModal(false);
       setSelectedOrderForReport(null);
 
       Alert.alert(
         'Issue Reported',
-        `Thank you for reporting this issue. Our support team will contact you via ${reportIssue.contactMethod} within 24 hours to resolve this matter. You can track the status of your report in your profile.`,
+        `Thank you for reporting this issue. Our support team will contact you via ${reportIssue.contactMethod} within 24 hours to resolve this matter. The cook has also been notified. You can track the status of your report in your profile.`,
         [{ text: 'OK' }]
       );
     } catch (error) {
@@ -273,6 +349,16 @@ export default function OrdersScreen() {
     'Delivery address issue',
     'Payment problem',
     'Cook communication issue',
+    'Other'
+  ];
+
+  const cancellationReasons = [
+    'Changed my mind',
+    'Found a better option',
+    'Emergency came up',
+    'Delivery time too long',
+    'Cook not responding',
+    'Payment issue',
     'Other'
   ];
 
@@ -370,6 +456,19 @@ export default function OrdersScreen() {
                     <Text style={styles.metaLabel}>Address:</Text>
                     <Text style={styles.metaValue}>{order.deliveryAddress}</Text>
                   </View>
+                  
+                  {order.status === 'cancelled' && order.cancellationReason && (
+                    <View style={styles.cancellationInfo}>
+                      <Text style={styles.cancellationLabel}>Cancellation Reason:</Text>
+                      <Text style={styles.cancellationReason}>{order.cancellationReason}</Text>
+                      {order.cancellationMessage && (
+                        <>
+                          <Text style={styles.cancellationLabel}>Message:</Text>
+                          <Text style={styles.cancellationMessage}>{order.cancellationMessage}</Text>
+                        </>
+                      )}
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
 
@@ -441,6 +540,99 @@ export default function OrdersScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Cancel Order Modal */}
+      <Modal
+        visible={showCancelModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCancelModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Cancel Order</Text>
+            <TouchableOpacity 
+              onPress={() => setShowCancelModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <X size={24} color={theme.colors.onSurface} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {selectedOrderForCancel && (
+              <View style={styles.orderSummary}>
+                <Text style={styles.orderSummaryTitle}>Order Details</Text>
+                <Text style={styles.orderSummaryText}>
+                  {selectedOrderForCancel.items[0]?.title} by {selectedOrderForCancel.cookName}
+                </Text>
+                <Text style={styles.orderSummaryText}>
+                  Order #{selectedOrderForCancel.trackingNumber}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.reasonSection}>
+              <Text style={styles.sectionTitle}>Why are you cancelling?</Text>
+              <View style={styles.reasonOptions}>
+                {cancellationReasons.map((reason) => (
+                  <TouchableOpacity
+                    key={reason}
+                    style={[
+                      styles.reasonOption,
+                      cancellationData.reason === reason && styles.reasonOptionSelected
+                    ]}
+                    onPress={() => setCancellationData(prev => ({ ...prev, reason }))}
+                  >
+                    <Text style={[
+                      styles.reasonText,
+                      cancellationData.reason === reason && styles.reasonTextSelected
+                    ]}>
+                      {reason}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.messageSection}>
+              <Text style={styles.sectionTitle}>Message to Cook (Optional)</Text>
+              <Input
+                placeholder="Let the cook know why you're cancelling..."
+                value={cancellationData.message}
+                onChangeText={(text) => setCancellationData(prev => ({ ...prev, message: text }))}
+                multiline
+                numberOfLines={3}
+                style={styles.messageInput}
+              />
+            </View>
+
+            <View style={styles.warningSection}>
+              <AlertTriangle size={20} color={theme.colors.warning} />
+              <Text style={styles.warningText}>
+                The cook will be notified immediately about this cancellation. You will receive a full refund within 3-5 business days.
+              </Text>
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalActions}>
+            <Button
+              mode="outlined"
+              onPress={() => setShowCancelModal(false)}
+              style={styles.modalCancelButton}
+            >
+              Keep Order
+            </Button>
+            <Button
+              mode="contained"
+              onPress={confirmCancelOrder}
+              style={[styles.modalSubmitButton, { backgroundColor: theme.colors.error }]}
+            >
+              Cancel Order
+            </Button>
+          </View>
+        </View>
+      </Modal>
 
       {/* Report Issue Modal */}
       <Modal
@@ -696,6 +888,30 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  cancellationInfo: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  cancellationLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.error,
+    marginBottom: 4,
+  },
+  cancellationReason: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+    marginBottom: 8,
+  },
+  cancellationMessage: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    fontStyle: 'italic',
+  },
   orderActions: {
     flexDirection: 'row',
     padding: 15,
@@ -763,7 +979,7 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
     marginBottom: theme.spacing.xs,
   },
-  issueTypeSection: {
+  reasonSection: {
     marginBottom: theme.spacing.xl,
   },
   sectionTitle: {
@@ -771,6 +987,55 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: theme.colors.onSurface,
     marginBottom: theme.spacing.lg,
+  },
+  reasonOptions: {
+    gap: theme.spacing.md,
+  },
+  reasonOption: {
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  reasonOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  reasonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+  },
+  reasonTextSelected: {
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  messageSection: {
+    marginBottom: theme.spacing.xl,
+  },
+  messageInput: {
+    marginBottom: 0,
+  },
+  warningSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.xl,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 20,
+  },
+  issueTypeSection: {
+    marginBottom: theme.spacing.xl,
   },
   issueTypes: {
     gap: theme.spacing.md,
