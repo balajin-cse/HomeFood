@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { Chrome as Home, ChefHat, ShoppingBag, User, ShoppingCart, Package, Truck } from 'lucide-react-native';
 import { View, Text, StyleSheet } from 'react-native';
