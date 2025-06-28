@@ -1,15 +1,5 @@
 import { Platform } from 'react-native';
 
-// Import RevenueCat for native platforms
-let Purchases: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    Purchases = require('react-native-purchases').default;
-  } catch (error) {
-    console.warn('RevenueCat not available on web platform');
-  }
-}
-
 export interface PurchasePackage {
   identifier: string;
   packageType: string;
@@ -50,150 +40,95 @@ class RevenueCatService {
   private mockSubscriptionActive = false;
 
   async configure(apiKey: string): Promise<void> {
-    if (Platform.OS === 'web' || !Purchases) {
-      // Mock configuration for web
-      this.isConfigured = true;
-      console.log('RevenueCat configured (web mock) with API key:', apiKey);
-      return;
-    }
-
-    try {
-      await Purchases.configure({ apiKey });
-      this.isConfigured = true;
-      console.log('RevenueCat configured successfully');
-    } catch (error) {
-      console.error('Failed to configure RevenueCat:', error);
-      throw error;
-    }
+    // Mock configuration for web/demo
+    this.isConfigured = true;
+    console.log('RevenueCat configured (mock) with API key:', apiKey);
+    return;
   }
 
   async getOfferings(): Promise<Offerings> {
-    if (Platform.OS === 'web' || !Purchases || !this.isConfigured) {
-      // Mock offerings for web
-      return {
-        current: {
-          identifier: 'default',
-          serverDescription: 'Default offering',
-          availablePackages: [
-            {
+    // Mock offerings for demo
+    return {
+      current: {
+        identifier: 'default',
+        serverDescription: 'Default offering',
+        availablePackages: [
+          {
+            identifier: 'daily_plan',
+            packageType: 'CUSTOM',
+            product: {
               identifier: 'daily_plan',
-              packageType: 'CUSTOM',
-              product: {
-                identifier: 'daily_plan',
-                price: 4.99,
-                priceString: '$4.99',
-                currencyCode: 'USD',
-                title: 'Daily Explorer',
-                description: 'Perfect for trying new dishes daily with same-day delivery and customer support'
-              }
-            },
-            {
-              identifier: 'weekly_plan',
-              packageType: 'WEEKLY',
-              product: {
-                identifier: 'weekly_plan',
-                price: 24.99,
-                priceString: '$24.99',
-                currencyCode: 'USD',
-                title: 'Weekly Foodie',
-                description: 'Most popular! Weekly access with priority ordering, meal planning, and free delivery'
-              }
-            },
-            {
-              identifier: 'monthly_plan',
-              packageType: 'MONTHLY',
-              product: {
-                identifier: 'monthly_plan',
-                price: 79.99,
-                priceString: '$79.99',
-                currencyCode: 'USD',
-                title: 'Monthly Gourmet',
-                description: 'Best value! Monthly access with exclusive chef access, custom requests, and VIP events'
-              }
+              price: 4.99,
+              priceString: '$4.99',
+              currencyCode: 'USD',
+              title: 'Daily Explorer',
+              description: 'Perfect for trying new dishes daily with same-day delivery and customer support'
             }
-          ]
-        },
-        all: {}
-      };
-    }
-
-    try {
-      const offerings = await Purchases.getOfferings();
-      return offerings;
-    } catch (error) {
-      console.error('Failed to get offerings:', error);
-      return { current: undefined, all: {} };
-    }
+          },
+          {
+            identifier: 'weekly_plan',
+            packageType: 'WEEKLY',
+            product: {
+              identifier: 'weekly_plan',
+              price: 24.99,
+              priceString: '$24.99',
+              currencyCode: 'USD',
+              title: 'Weekly Foodie',
+              description: 'Most popular! Weekly access with priority ordering, meal planning, and free delivery'
+            }
+          },
+          {
+            identifier: 'monthly_plan',
+            packageType: 'MONTHLY',
+            product: {
+              identifier: 'monthly_plan',
+              price: 79.99,
+              priceString: '$79.99',
+              currencyCode: 'USD',
+              title: 'Monthly Gourmet',
+              description: 'Best value! Monthly access with exclusive chef access, custom requests, and VIP events'
+            }
+          }
+        ]
+      },
+      all: {}
+    };
   }
 
   async purchasePackage(packageToPurchase: PurchasePackage): Promise<{ customerInfo: CustomerInfo }> {
-    if (Platform.OS === 'web' || !Purchases || !this.isConfigured) {
-      // Mock purchase for web
-      this.mockSubscriptionActive = true;
-      return {
-        customerInfo: {
-          activeSubscriptions: [packageToPurchase.identifier],
-          allPurchasedProductIdentifiers: [packageToPurchase.identifier],
-          entitlements: {
-            active: { premium: { isActive: true } },
-            all: { premium: { isActive: true } }
-          },
-          originalPurchaseDate: new Date().toISOString(),
-          latestExpirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      };
-    }
-
-    try {
-      const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-      return { customerInfo };
-    } catch (error) {
-      console.error('Purchase failed:', error);
-      throw error;
-    }
+    // Mock purchase for demo
+    this.mockSubscriptionActive = true;
+    return {
+      customerInfo: {
+        activeSubscriptions: [packageToPurchase.identifier],
+        allPurchasedProductIdentifiers: [packageToPurchase.identifier],
+        entitlements: {
+          active: { premium: { isActive: true } },
+          all: { premium: { isActive: true } }
+        },
+        originalPurchaseDate: new Date().toISOString(),
+        latestExpirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    };
   }
 
   async getCustomerInfo(): Promise<CustomerInfo> {
-    if (Platform.OS === 'web' || !Purchases || !this.isConfigured) {
-      // Mock customer info for web
-      return {
-        activeSubscriptions: this.mockSubscriptionActive ? ['premium'] : [],
-        allPurchasedProductIdentifiers: this.mockSubscriptionActive ? ['premium'] : [],
-        entitlements: {
-          active: this.mockSubscriptionActive ? { premium: { isActive: true } } : {},
-          all: this.mockSubscriptionActive ? { premium: { isActive: true } } : {}
-        },
-        originalPurchaseDate: this.mockSubscriptionActive ? new Date().toISOString() : undefined,
-        latestExpirationDate: this.mockSubscriptionActive ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : undefined
-      };
-    }
-
-    try {
-      const customerInfo = await Purchases.getCustomerInfo();
-      return customerInfo;
-    } catch (error) {
-      console.error('Failed to get customer info:', error);
-      return {
-        activeSubscriptions: [],
-        allPurchasedProductIdentifiers: [],
-        entitlements: { active: {}, all: {} }
-      };
-    }
+    // Mock customer info for demo
+    return {
+      activeSubscriptions: this.mockSubscriptionActive ? ['premium'] : [],
+      allPurchasedProductIdentifiers: this.mockSubscriptionActive ? ['premium'] : [],
+      entitlements: {
+        active: this.mockSubscriptionActive ? { premium: { isActive: true } } : {},
+        all: this.mockSubscriptionActive ? { premium: { isActive: true } } : {}
+      },
+      originalPurchaseDate: this.mockSubscriptionActive ? new Date().toISOString() : undefined,
+      latestExpirationDate: this.mockSubscriptionActive ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : undefined
+    };
   }
 
   async restorePurchases(): Promise<{ customerInfo: CustomerInfo }> {
-    if (Platform.OS === 'web' || !Purchases || !this.isConfigured) {
-      const customerInfo = await this.getCustomerInfo();
-      return { customerInfo };
-    }
-
-    try {
-      const { customerInfo } = await Purchases.restorePurchases();
-      return { customerInfo };
-    } catch (error) {
-      console.error('Restore failed:', error);
-      throw error;
-    }
+    const customerInfo = await this.getCustomerInfo();
+    return { customerInfo };
   }
 
   isSubscriptionActive(customerInfo: CustomerInfo): boolean {
@@ -201,9 +136,7 @@ class RevenueCatService {
   }
 
   async setMockSubscription(active: boolean): Promise<void> {
-    if (Platform.OS === 'web') {
-      this.mockSubscriptionActive = active;
-    }
+    this.mockSubscriptionActive = active;
   }
 }
 
