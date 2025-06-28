@@ -13,7 +13,7 @@ import { Card, Chip, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { X, AlertTriangle, MessageCircle, RefreshCw, Package } from 'lucide-react-native';
+import { X, TriangleAlert as AlertTriangle, MessageCircle, RefreshCw, Package } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
 import { theme } from '@/constants/theme';
 
