@@ -99,30 +99,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
+      console.log('🔑 Attempting login for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error.message);
         return false;
       }
 
       if (data.user) {
+        console.log('✅ Login successful for user:', data.user.email);
         await loadUserProfile(data.user);
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('❌ Login exception:', error);
       return false;
     }
   };
 
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
+      console.log('📝 Attempting registration for:', userData.email);
       const { data, error } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -136,11 +139,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (error) {
-        console.error('Registration error:', error);
+        console.error('❌ Registration error:', error.message);
         return false;
       }
 
       if (data.user) {
+        console.log('✅ Registration successful for user:', data.user.email);
         // Update profile with additional info
         const { error: profileError } = await supabase
           .from('profiles')
@@ -152,7 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           .eq('id', data.user.id);
 
         if (profileError) {
-          console.error('Profile update error:', profileError);
+          console.error('❌ Profile update error:', profileError.message);
         }
 
         await loadUserProfile(data.user);
@@ -161,7 +165,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       return true;
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('❌ Registration exception:', error);
       return false;
     }
   };
