@@ -22,6 +22,7 @@ export default function AuthScreen() {
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -31,60 +32,89 @@ export default function AuthScreen() {
   });
 
   const handleSubmit = async () => {
+    setError(null);
+    
     if (!formData.email || !formData.password) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      setError('Please fill in all required fields');
       return;
     }
 
-    if (!isLogin && (!formData.name || !formData.phone)) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!isLogin && (!formData.name)) {
+      setError('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
+    
     try {
-      let success = false;
+      let result;
       
       if (isLogin) {
-        success = await login(formData.email, formData.password);
+        result = await login(formData.email, formData.password);
       } else {
-        success = await register(formData);
+        result = await register({
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          phone: formData.phone,
+          isCook: formData.isCook,
+        });
       }
 
-      if (success) {
-        router.replace('/(tabs)');
+      if (result.success) {
+        if (isLogin) {
+          console.log('✅ Login successful, navigating to main app');
+          router.replace('/(tabs)');
+        } else {
+          // For registration, show success message and switch to login
+          Alert.alert(
+            'Registration Successful!',
+            result.error || 'You can now log in with your credentials.',
+            [
+              { 
+                text: 'OK', 
+                onPress: () => {
+                  setIsLogin(true);
+                  setFormData(prev => ({ ...prev, password: '' }));
+                }
+              }
+            ]
+          );
+        }
       } else {
-        Alert.alert('Error', isLogin ? 'Invalid credentials' : 'Registration failed');
+        setError(result.error || 'Authentication failed');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Authentication error:', error);
+      setError(error.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const updateFormData = (field: string, value: string | boolean) => {
+    setError(null); // Clear error when user types
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const fillCookCredentials = () => {
-    setFormData({
-      email: 'ck-cookname@homefood.com',
-      password: 'cookpass',
-      name: '',
-      phone: '',
-      isCook: false,
-    });
-  };
-
-  const fillUserCredentials = () => {
-    setFormData({
-      email: 'bala@example.com',
-      password: 'pass123',
-      name: '',
-      phone: '',
-      isCook: false,
-    });
+  const fillTestCredentials = (type: 'user' | 'cook') => {
+    if (type === 'user') {
+      setFormData({
+        email: 'bala@example.com',
+        password: 'pass123',
+        name: 'Bala',
+        phone: '+1234567890',
+        isCook: false,
+      });
+    } else {
+      setFormData({
+        email: 'ck-cookname@homefood.app',
+        password: 'cookpass',
+        name: 'Cook Name',
+        phone: '+1234567891',
+        isCook: true,
+      });
+    }
   };
 
   return (
@@ -129,6 +159,13 @@ export default function AuthScreen() {
             </Text>
           </View>
 
+          {/* Error Display */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
           {/* Demo Credentials */}
           {isLogin && (
             <View style={styles.demoCredentials}>
@@ -136,13 +173,13 @@ export default function AuthScreen() {
               <View style={styles.demoButtons}>
                 <TouchableOpacity 
                   style={styles.demoButton}
-                  onPress={fillUserCredentials}
+                  onPress={() => fillTestCredentials('user')}
                 >
                   <Text style={styles.demoButtonText}>Customer Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.demoButton}
-                  onPress={fillCookCredentials}
+                  onPress={() => fillTestCredentials('cook')}
                 >
                   <Text style={styles.demoButtonText}>Cook Login</Text>
                 </TouchableOpacity>
@@ -181,7 +218,7 @@ export default function AuthScreen() {
                 />
 
                 <Input
-                  label="Phone Number"
+                  label="Phone Number (Optional)"
                   placeholder="Enter your phone number"
                   value={formData.phone}
                   onChangeText={(text) => updateFormData('phone', text)}
@@ -213,14 +250,18 @@ export default function AuthScreen() {
             )}
 
             <Button
-              title={isLogin ? 'Sign In' : 'Create Account'}
+              title={loading ? (isLogin ? 'Signing In...' : 'Creating Account...') : (isLogin ? 'Sign In' : 'Create Account')}
               onPress={handleSubmit}
               disabled={loading}
               style={styles.submitButton}
             />
 
             <TouchableOpacity
-              onPress={() => setIsLogin(!isLogin)}
+              onPress={() => {
+                setIsLogin(!isLogin);
+                setError(null);
+                setFormData(prev => ({ ...prev, password: '' }));
+              }}
               style={styles.switchModeButton}
             >
               <Text style={styles.switchModeText}>
@@ -236,18 +277,17 @@ export default function AuthScreen() {
           </View>
         </Card>
 
-        {/* Cook Credentials Info */}
+        {/* Test Credentials Info */}
         <Card style={styles.infoCard}>
-          <Text style={styles.infoTitle}>Cook Login Information</Text>
+          <Text style={styles.infoTitle}>Test Credentials</Text>
           <Text style={styles.infoText}>
-            Available cook accounts:
-            {'\n\n'}• Maria Rodriguez: ck-maria@homefood.app
-            {'\n'}• Sarah Johnson: ck-sarah@homefood.app
-            {'\n'}• David Chen: ck-david@homefood.app
-            {'\n'}• Kenji Tanaka: ck-kenji@homefood.app
-            {'\n'}• Elena Papadopoulos: ck-elena@homefood.app
-            {'\n'}• Marcus Campbell: ck-marcus@homefood.app
-            {'\n\n'}All cook passwords: cookpass
+            <Text style={styles.infoLabel}>Customer Account:</Text>
+            {'\n'}Email: bala@example.com
+            {'\n'}Password: pass123
+            {'\n\n'}
+            <Text style={styles.infoLabel}>Cook Account:</Text>
+            {'\n'}Email: ck-cookname@homefood.app
+            {'\n'}Password: cookpass
           </Text>
         </Card>
 
@@ -326,6 +366,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
   },
+  errorContainer: {
+    backgroundColor: theme.colors.error + '20',
+    borderColor: theme.colors.error,
+    borderWidth: 1,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.error,
+    textAlign: 'center',
+  },
   demoCredentials: {
     marginBottom: theme.spacing.lg,
     padding: theme.spacing.md,
@@ -364,6 +418,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.outline,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   cookToggleContent: {
     flexDirection: 'row',
@@ -431,10 +488,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   infoText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurface,
-    lineHeight: 18,
+    lineHeight: 20,
+  },
+  infoLabel: {
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
   },
   footer: {
     paddingHorizontal: theme.spacing.lg,

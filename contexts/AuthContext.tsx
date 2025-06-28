@@ -44,18 +44,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadUserProfile(session.user);
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted && session?.user) {
+          await loadUserProfile(session.user);
+        }
+      } catch (error) {
+        console.error('❌ Error checking session:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth state changed:', event);
       
+      if (!mounted) return;
+
       if (session?.user) {
         await loadUserProfile(session.user);
       } else {
@@ -65,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -101,7 +116,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           address: profile.address || undefined,
           profileImage: profile.profile_image || undefined,
         };
-        console.log('✅ Profile loaded successfully');
+        console.log('✅ Profile loaded successfully:', { 
+          email: user.email, 
+          name: user.name, 
+          isCook: user.isCook 
+        });
         setUser(user);
       }
     } catch (err) {
@@ -111,19 +130,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const createUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
+      console.log('📝 Creating profile for user:', supabaseUser.email);
+      
+      const profileData = {
+        id: supabaseUser.id,
+        email: supabaseUser.email!,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
+        phone: supabaseUser.user_metadata?.phone || null,
+        is_cook: supabaseUser.user_metadata?.is_cook || false,
+        profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .insert({
-          id: supabaseUser.id,
-          email: supabaseUser.email!,
-          name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
-          phone: supabaseUser.user_metadata?.phone || null,
-          is_cook: supabaseUser.user_metadata?.is_cook || false,
-          profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        });
+        .insert(profileData);
 
       if (error) {
         console.error('❌ Error creating profile:', error);
+        
+        // If it's a unique constraint error, the profile already exists
+        if (error.code === '23505') {
+          console.log('⚠️ Profile already exists, loading existing profile...');
+          await loadUserProfile(supabaseUser);
+          return;
+        }
         return;
       }
 
@@ -145,18 +175,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('❌ Login error:', error.message);
-        return { success: false, error: error.message };
+        
+        // Provide user-friendly error messages
+        let userFriendlyError = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
+        }
+        
+        return { success: false, error: userFriendlyError };
       }
 
       if (data.user) {
         console.log('✅ Login successful for user:', data.user.email);
+        // Profile will be loaded automatically via the auth state change listener
         return { success: true };
       }
       
       return { success: false, error: 'Login failed - no user returned' };
     } catch (error: any) {
       console.error('❌ Login exception:', error);
-      return { success: false, error: error.message || 'An unexpected error occurred' };
+      return { success: false, error: error.message || 'An unexpected error occurred during login' };
     }
   };
 
@@ -182,6 +222,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Handle specific error cases
         if (error.message.includes('already registered')) {
           return { success: false, error: 'This email is already registered. Please try logging in instead.' };
+        } else if (error.message.includes('Password should be')) {
+          return { success: false, error: 'Password must be at least 6 characters long.' };
+        } else if (error.message.includes('invalid email')) {
+          return { success: false, error: 'Please enter a valid email address.' };
         }
         
         return { success: false, error: error.message };
@@ -194,17 +238,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!data.session) {
           return { 
             success: true, 
-            error: 'Please check your email for a confirmation link before logging in.' 
+            error: 'Registration successful! Please check your email for a confirmation link before logging in.' 
           };
         }
         
+        // If there's a session, the user is automatically logged in
         return { success: true };
       }
       
       return { success: false, error: 'Registration failed - no user returned' };
     } catch (error: any) {
       console.error('❌ Registration exception:', error);
-      return { success: false, error: error.message || 'An unexpected error occurred' };
+      return { success: false, error: error.message || 'An unexpected error occurred during registration' };
     }
   };
 
