@@ -8,14 +8,17 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { Card, Chip, Button } from 'react-native-paper';
 import { router } from 'expo-router';
 import { format } from 'date-fns';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { X, TriangleAlert as AlertTriangle, MessageCircle, RefreshCw, Package } from 'lucide-react-native';
+import { X, TriangleAlert as AlertTriangle, MessageCircle, RefreshCw, Package, ChefHat, Clock, CheckCircle } from 'lucide-react-native';
 import { Input } from '@/components/ui/Input';
+import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface Order {
   orderId: string;
@@ -55,7 +58,296 @@ interface CookNotification {
   isRead: boolean;
 }
 
-export default function OrdersScreen() {
+// Cook Orders Management Interface
+function CookOrdersInterface() {
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const loadOrders = async () => {
+    try {
+      const storedOrders = await AsyncStorage.getItem('orderHistory');
+      if (storedOrders) {
+        const allOrders = JSON.parse(storedOrders);
+        // Filter orders for this cook
+        const cookOrders = allOrders.filter((order: Order) => 
+          order.cookId === user?.id || order.cookName === user?.name
+        );
+        setOrders(cookOrders);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadOrders();
+    setRefreshing(false);
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      const storedOrders = await AsyncStorage.getItem('orderHistory');
+      if (storedOrders) {
+        const allOrders = JSON.parse(storedOrders);
+        const updatedOrders = allOrders.map((order: Order) =>
+          order.orderId === orderId ? { ...order, status: newStatus } : order
+        );
+        
+        await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
+        
+        const updatedCookOrders = orders.map(order =>
+          order.orderId === orderId ? { ...order, status: newStatus } : order
+        );
+        setOrders(updatedCookOrders);
+        
+        Alert.alert('Success', `Order status updated to ${getStatusText(newStatus)}`);
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      Alert.alert('Error', 'Failed to update order status');
+    }
+  };
+
+  const getStatusColor = (status: Order['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return '#FF9800';
+      case 'preparing':
+        return theme.colors.primary;
+      case 'ready':
+        return theme.colors.secondary;
+      case 'picked_up':
+        return '#2196F3';
+      case 'delivered':
+        return '#4CAF50';
+      case 'cancelled':
+        return '#F44336';
+      default:
+        return theme.colors.onSurface;
+    }
+  };
+
+  const getStatusText = (status: Order['status']) => {
+    switch (status) {
+      case 'confirmed':
+        return 'Confirmed';
+      case 'preparing':
+        return 'Preparing';
+      case 'ready':
+        return 'Ready';
+      case 'picked_up':
+        return 'Picked Up';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  };
+
+  const activeOrders = orders.filter(order => 
+    ['confirmed', 'preparing', 'ready', 'picked_up'].includes(order.status)
+  );
+
+  const orderHistory = orders.filter(order => 
+    ['delivered', 'cancelled'].includes(order.status)
+  );
+
+  const displayOrders = selectedTab === 'active' ? activeOrders : orderHistory;
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <Package size={32} color="white" />
+          <Text style={styles.headerTitle}>Order Management</Text>
+          <Text style={styles.headerSubtitle}>
+            Manage incoming orders and track progress
+          </Text>
+        </View>
+      </LinearGradient>
+
+      {/* Tabs */}
+      <View style={styles.tabs}>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'active' && styles.activeTab]}
+          onPress={() => setSelectedTab('active')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'active' && styles.activeTabText]}>
+            Active ({activeOrders.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'history' && styles.activeTab]}
+          onPress={() => setSelectedTab('history')}
+        >
+          <Text style={[styles.tabText, selectedTab === 'history' && styles.activeTabText]}>
+            History ({orderHistory.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.ordersList}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {displayOrders.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Package size={48} color={theme.colors.onSurfaceVariant} />
+            <Text style={styles.emptyStateText}>
+              {selectedTab === 'active' 
+                ? 'No active orders' 
+                : 'No order history'
+              }
+            </Text>
+            <Text style={styles.emptyStateSubtext}>
+              {selectedTab === 'active' 
+                ? 'New orders will appear here when customers place them'
+                : 'Completed and cancelled orders will appear here'
+              }
+            </Text>
+          </View>
+        ) : (
+          displayOrders.map((order) => (
+            <Card key={order.orderId} style={styles.orderCard}>
+              <View style={styles.orderHeader}>
+                <View style={styles.orderInfo}>
+                  <Text style={styles.orderTitle}>
+                    {order.items[0]?.title || 'Order'} 
+                    {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                  </Text>
+                  <Text style={styles.customerName}>Customer: {order.customerName}</Text>
+                  <Text style={styles.trackingNumber}>#{order.trackingNumber}</Text>
+                </View>
+                <Chip
+                  style={[styles.statusChip, { backgroundColor: getStatusColor(order.status) }]}
+                  textStyle={styles.statusText}
+                >
+                  {getStatusText(order.status)}
+                </Chip>
+              </View>
+
+              <View style={styles.orderDetails}>
+                <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Order ID:</Text>
+                  <Text style={styles.metaValue}>{order.orderId}</Text>
+                </View>
+                <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Quantity:</Text>
+                  <Text style={styles.metaValue}>{order.quantity} items</Text>
+                </View>
+                <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Total:</Text>
+                  <Text style={styles.metaValue}>${order.totalPrice.toFixed(2)}</Text>
+                </View>
+                <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Order Date:</Text>
+                  <Text style={styles.metaValue}>
+                    {format(new Date(order.orderDate), 'MMM dd, yyyy • h:mm a')}
+                  </Text>
+                </View>
+                <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Delivery Time:</Text>
+                  <Text style={styles.metaValue}>{order.deliveryTime}</Text>
+                </View>
+                <View style={styles.orderMeta}>
+                  <Text style={styles.metaLabel}>Address:</Text>
+                  <Text style={styles.metaValue}>{order.deliveryAddress}</Text>
+                </View>
+                
+                {order.deliveryInstructions && (
+                  <View style={styles.instructionsSection}>
+                    <Text style={styles.instructionsLabel}>Delivery Instructions:</Text>
+                    <Text style={styles.instructionsText}>{order.deliveryInstructions}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Order Items */}
+              <View style={styles.itemsSection}>
+                <Text style={styles.itemsLabel}>Order Items:</Text>
+                {order.items.map((item, index) => (
+                  <View key={index} style={styles.orderItem}>
+                    <Text style={styles.itemName}>{item.title}</Text>
+                    <Text style={styles.itemQuantity}>x{item.quantity}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Action Buttons */}
+              {selectedTab === 'active' && (
+                <View style={styles.orderActions}>
+                  {order.status === 'confirmed' && (
+                    <Button
+                      mode="contained"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'preparing')}
+                      style={styles.actionButton}
+                    >
+                      Start Preparing
+                    </Button>
+                  )}
+                  
+                  {order.status === 'preparing' && (
+                    <Button
+                      mode="contained"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'ready')}
+                      style={styles.actionButton}
+                    >
+                      Mark Ready
+                    </Button>
+                  )}
+                  
+                  {order.status === 'ready' && (
+                    <Button
+                      mode="contained"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'picked_up')}
+                      style={styles.actionButton}
+                    >
+                      Mark Picked Up
+                    </Button>
+                  )}
+
+                  {order.status === 'picked_up' && (
+                    <View style={styles.deliveryNote}>
+                      <Text style={styles.deliveryNoteText}>
+                        Order is out for delivery. Use the Delivery tab to complete delivery.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {selectedTab === 'history' && order.status === 'delivered' && (
+                <View style={styles.completedIndicator}>
+                  <CheckCircle size={20} color={theme.colors.success} />
+                  <Text style={styles.completedText}>Order Completed Successfully</Text>
+                </View>
+              )}
+            </Card>
+          ))
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+// Customer Orders Interface (existing functionality)
+function CustomerOrdersInterface() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedTab, setSelectedTab] = useState<'active' | 'history'>('active');
   const [showReportModal, setShowReportModal] = useState(false);
@@ -78,13 +370,11 @@ export default function OrdersScreen() {
 
   const loadOrders = async () => {
     try {
-      // Load orders from AsyncStorage
       const storedOrders = await AsyncStorage.getItem('orderHistory');
       if (storedOrders) {
         const parsedOrders = JSON.parse(storedOrders);
         setOrders(parsedOrders);
       } else {
-        // Fallback to mock data if no stored orders
         const mockOrders: Order[] = [
           {
             orderId: 'ORD1234567890',
@@ -164,7 +454,6 @@ export default function OrdersScreen() {
         isRead: false,
       };
 
-      // Store notification for the cook
       const existingNotifications = await AsyncStorage.getItem('cookNotifications');
       const notifications = existingNotifications ? JSON.parse(existingNotifications) : [];
       notifications.unshift(cookNotification);
@@ -176,7 +465,6 @@ export default function OrdersScreen() {
   };
 
   const handleCancelOrder = (order: Order) => {
-    // Only allow cancellation for confirmed orders
     if (order.status !== 'confirmed') {
       Alert.alert(
         'Cannot Cancel',
@@ -200,7 +488,6 @@ export default function OrdersScreen() {
     }
 
     try {
-      // Update order status to cancelled
       const updatedOrders = orders.map(o => 
         o.orderId === selectedOrderForCancel.orderId 
           ? { 
@@ -215,7 +502,6 @@ export default function OrdersScreen() {
       setOrders(updatedOrders);
       await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
 
-      // Send notification to cook
       if (selectedOrderForCancel.cookId) {
         await sendNotificationToCook({
           cookId: selectedOrderForCancel.cookId,
@@ -258,7 +544,6 @@ export default function OrdersScreen() {
     }
 
     try {
-      // Create the issue report
       const issueReport = {
         id: Date.now().toString(),
         orderId: selectedOrderForReport!.orderId,
@@ -270,18 +555,16 @@ export default function OrdersScreen() {
         contactMethod: reportIssue.contactMethod,
       };
 
-      // Store the issue in AsyncStorage for tracking
       try {
         const existingIssues = await AsyncStorage.getItem('reportedIssues');
         const issues = existingIssues ? JSON.parse(existingIssues) : [];
-        issues.unshift(issueReport); // Add to beginning of array
+        issues.unshift(issueReport);
         
         await AsyncStorage.setItem('reportedIssues', JSON.stringify(issues));
       } catch (storageError) {
         console.error('Error saving issue report:', storageError);
       }
 
-      // Send notification to cook if it's an order-related issue
       if (selectedOrderForReport!.cookId) {
         await sendNotificationToCook({
           cookId: selectedOrderForReport!.cookId,
@@ -322,12 +605,10 @@ export default function OrdersScreen() {
   };
 
   const handleReorder = (order: Order) => {
-    // Navigate back to the food item or cook's menu
     router.push('/(tabs)');
   };
 
   const handleViewOrderDetails = (order: Order) => {
-    // Navigate to order tracking page for detailed view
     handleTrackOrder(order);
   };
 
@@ -516,7 +797,6 @@ export default function OrdersScreen() {
                     <Button
                       mode="contained"
                       onPress={() => {
-                        // Navigate to review page or show review modal
                         Alert.alert('Review', 'Review functionality will be implemented soon!');
                       }}
                       style={styles.actionButton}
@@ -757,6 +1037,18 @@ export default function OrdersScreen() {
   );
 }
 
+// Main component
+export default function OrdersScreen() {
+  const { user } = useAuth();
+
+  // Show cook interface for cooks, customer interface for customers
+  if (user?.isCook) {
+    return <CookOrdersInterface />;
+  }
+
+  return <CustomerOrdersInterface />;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -767,11 +1059,15 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     backgroundColor: theme.colors.primary,
   },
+  headerContent: {
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: 'white',
     fontFamily: 'Inter-Bold',
+    marginTop: theme.spacing.md,
     marginBottom: 5,
   },
   headerSubtitle: {
@@ -779,6 +1075,7 @@ const styles = StyleSheet.create({
     color: 'white',
     opacity: 0.9,
     fontFamily: 'Inter-Regular',
+    textAlign: 'center',
   },
   tabs: {
     flexDirection: 'row',
@@ -823,6 +1120,13 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     fontFamily: 'Inter-Regular',
   },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: theme.colors.onSurfaceVariant,
+    fontFamily: 'Inter-Regular',
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
   startOrderingButton: {
     paddingHorizontal: 20,
   },
@@ -847,6 +1151,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
   },
   cookName: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontFamily: 'Inter-Medium',
+    marginBottom: 5,
+  },
+  customerName: {
     fontSize: 14,
     color: theme.colors.primary,
     fontFamily: 'Inter-Medium',
@@ -888,6 +1198,53 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  instructionsSection: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: theme.colors.surfaceVariant,
+    borderRadius: theme.borderRadius.md,
+  },
+  instructionsLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: 4,
+  },
+  instructionsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  itemsSection: {
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.outline,
+    paddingTop: 15,
+  },
+  itemsLabel: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: 10,
+  },
+  orderItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 5,
+  },
+  itemName: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+    flex: 1,
+  },
+  itemQuantity: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+  },
   cancellationInfo: {
     marginTop: 10,
     padding: 10,
@@ -927,6 +1284,30 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     borderColor: theme.colors.error,
+  },
+  deliveryNote: {
+    backgroundColor: theme.colors.surfaceVariant,
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.sm,
+  },
+  deliveryNoteText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  completedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+  },
+  completedText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.success,
   },
   // Modal Styles
   modalContainer: {
