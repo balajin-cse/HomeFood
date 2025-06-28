@@ -82,7 +82,7 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export default function SubscriptionScreen() {
-  const { packages, purchasePackage, restorePurchases, isSubscribed } = useSubscription();
+  const { packages, purchasePackage } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState('weekly_plan');
   const [loading, setLoading] = useState(false);
 
@@ -118,25 +118,6 @@ export default function SubscriptionScreen() {
       }
     } catch (error) {
       Alert.alert('Error', 'Something went wrong. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRestore = async () => {
-    setLoading(true);
-    try {
-      const success = await restorePurchases();
-      if (success) {
-        Alert.alert('Purchases Restored', 'Your subscription has been restored successfully.');
-        if (isSubscribed) {
-          router.replace('/(tabs)');
-        }
-      } else {
-        Alert.alert('No Purchases Found', 'No previous purchases were found to restore.');
-      }
-    } catch (error) {
-      Alert.alert('Restore Failed', 'Unable to restore purchases. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -253,20 +234,6 @@ export default function SubscriptionScreen() {
             Your payment is protected with bank-level security. Cancel anytime with no hidden fees.
           </Text>
         </Card>
-
-        {/* RevenueCat Integration Info */}
-        <Card style={styles.infoSection}>
-          <Text style={styles.infoTitle}>🚀 Production Ready</Text>
-          <Text style={styles.infoText}>
-            This app uses RevenueCat for subscription management, supporting:
-            {'\n\n'}• iOS App Store subscriptions
-            {'\n'}• Google Play billing
-            {'\n'}• Amazon Appstore
-            {'\n'}• Cross-platform receipt validation
-            {'\n'}• Real-time subscription status
-            {'\n'}• Analytics and insights
-          </Text>
-        </Card>
       </ScrollView>
 
       {/* Bottom Action */}
@@ -281,7 +248,6 @@ export default function SubscriptionScreen() {
             </Text>
           )}
         </View>
-        
         <Button
           title={loading ? 'Processing...' : 'Start Free Trial'}
           onPress={handleSubscribe}
@@ -289,11 +255,6 @@ export default function SubscriptionScreen() {
           size="large"
           style={styles.subscribeButton}
         />
-        
-        <TouchableOpacity onPress={handleRestore} style={styles.restoreButton}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
-        </TouchableOpacity>
-        
         <Text style={styles.trialText}>
           7-day free trial, then ${selectedPlanData?.price}/{selectedPlanData?.period}
         </Text>
@@ -464,7 +425,7 @@ const styles = StyleSheet.create({
   },
   trustSection: {
     marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   trustHeader: {
     flexDirection: 'row',
@@ -478,23 +439,6 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
   },
   trustText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
-  infoSection: {
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.surfaceVariant,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.md,
-  },
-  infoText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
@@ -522,16 +466,6 @@ const styles = StyleSheet.create({
   },
   subscribeButton: {
     marginBottom: theme.spacing.sm,
-  },
-  restoreButton: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
-  },
-  restoreText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
   },
   trialText: {
     fontSize: 12,

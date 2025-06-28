@@ -36,12 +36,6 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow HomeFood to use your location to find nearby home cooks and provide accurate delivery."
         }
-      ],
-      [
-        "react-native-purchases",
-        {
-          "revenuecat_project_id": "your_revenuecat_project_id"
-        }
       ]
     ],
     "scheme": "homefood"
