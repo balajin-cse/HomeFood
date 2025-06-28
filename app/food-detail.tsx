@@ -289,7 +289,7 @@ export default function FoodDetailScreen() {
       foodId: item.id,
       userId: user.id,
       userName: user.name,
-      userAvatar: user.profileImage,
+      userAvatar: user.profileImage || `https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop`,
       comment: newComment.trim(),
       rating: newRating,
       timestamp: new Date().toISOString(),

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, CreditCard, Clock, Check, CreditCard as Edit3, CircleCheck as CheckCircle, Package } from 'lucide-react-native';
+import { ArrowLeft, MapPin, CreditCard, Clock, Check, CreditCard as Edit3, CircleCheck as CheckCircle, Package, Plus } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
@@ -31,6 +31,16 @@ interface CartData {
   deliveryFee: number;
   serviceFee: number;
   total: number;
+}
+
+interface PaymentMethod {
+  id: string;
+  type: 'card' | 'paypal' | 'apple_pay' | 'google_pay';
+  last4?: string;
+  brand?: string;
+  expiryMonth?: number;
+  expiryYear?: number;
+  isDefault: boolean;
 }
 
 // Success Animation Component
@@ -105,6 +115,26 @@ export default function CheckoutScreen() {
   const [cartData, setCartData] = useState<CartData | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([
+    {
+      id: 'card1',
+      type: 'card',
+      last4: '4242',
+      brand: 'Visa',
+      expiryMonth: 12,
+      expiryYear: 2025,
+      isDefault: true,
+    },
+    {
+      id: 'card2',
+      type: 'card',
+      last4: '5555',
+      brand: 'Mastercard',
+      expiryMonth: 8,
+      expiryYear: 2026,
+      isDefault: false,
+    },
+  ]);
 
   useEffect(() => {
     // Load cart data from params if available, otherwise use current cart
@@ -135,11 +165,6 @@ export default function CheckoutScreen() {
   const addresses = [
     { id: 'home', label: 'Home', address: address || '123 Main Street, San Francisco, CA 94102' },
     { id: 'work', label: 'Work', address: '456 Market Street, San Francisco, CA 94105' },
-  ];
-
-  const paymentMethods = [
-    { id: 'card1', type: 'Visa', last4: '4242', label: 'Visa ending in 4242' },
-    { id: 'card2', type: 'Mastercard', last4: '5555', label: 'Mastercard ending in 5555' },
   ];
 
   const deliveryTimes = [
@@ -184,7 +209,7 @@ export default function CheckoutScreen() {
         totalPrice: cartData.total,
         quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0),
         deliveryAddress: selectedAddressData?.address || 'Unknown Address',
-        paymentMethod: selectedPaymentData?.label || 'Unknown Payment',
+        paymentMethod: selectedPaymentData?.brand ? `${selectedPaymentData.brand} ending in ${selectedPaymentData.last4}` : 'Unknown Payment',
         deliveryTime: selectedTimeData?.time || 'ASAP',
         deliveryInstructions: cartData.deliveryInstructions,
         orderDate: new Date().toISOString(),
@@ -229,6 +254,23 @@ export default function CheckoutScreen() {
     
     // Navigate to orders page
     router.replace('/(tabs)/orders');
+  };
+
+  const getCardIcon = (brand: string) => {
+    switch (brand?.toLowerCase()) {
+      case 'visa':
+        return '💳';
+      case 'mastercard':
+        return '💳';
+      case 'amex':
+        return '💳';
+      default:
+        return '💳';
+    }
+  };
+
+  const formatCardNumber = (last4: string) => {
+    return `•••• •••• •••• ${last4}`;
   };
 
   if (!cartData || cartData.items.length === 0) {
@@ -334,7 +376,12 @@ export default function CheckoutScreen() {
 
         {/* Payment Method */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Payment Method</Text>
+            <TouchableOpacity onPress={() => router.push('/payment-methods')}>
+              <Edit3 size={16} color={theme.colors.primary} />
+            </TouchableOpacity>
+          </View>
           {paymentMethods.map((payment) => (
             <TouchableOpacity
               key={payment.id}
@@ -344,17 +391,29 @@ export default function CheckoutScreen() {
               ]}
               onPress={() => setSelectedPayment(payment.id)}
             >
-              <CreditCard size={20} color={theme.colors.primary} />
+              <Text style={styles.cardIcon}>{getCardIcon(payment.brand || '')}</Text>
               <View style={styles.optionContent}>
-                <Text style={styles.optionLabel}>{payment.label}</Text>
+                <Text style={styles.optionLabel}>{payment.brand}</Text>
+                <Text style={styles.optionDescription}>
+                  {formatCardNumber(payment.last4 || '')}
+                </Text>
+                {payment.expiryMonth && payment.expiryYear && (
+                  <Text style={styles.cardExpiry}>
+                    Expires {payment.expiryMonth.toString().padStart(2, '0')}/{payment.expiryYear}
+                  </Text>
+                )}
               </View>
               {selectedPayment === payment.id && (
                 <Check size={20} color={theme.colors.primary} />
               )}
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={styles.addButton}>
-            <Text style={styles.addButtonText}>+ Add New Payment Method</Text>
+          <TouchableOpacity 
+            style={styles.addPaymentButton}
+            onPress={() => router.push('/payment-methods')}
+          >
+            <Plus size={20} color={theme.colors.primary} />
+            <Text style={styles.addPaymentText}>Add New Payment Method</Text>
           </TouchableOpacity>
         </Card>
 
@@ -586,11 +645,29 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
   },
-  addButton: {
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
+  cardIcon: {
+    fontSize: 24,
   },
-  addButtonText: {
+  cardExpiry: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginTop: theme.spacing.xs,
+  },
+  addPaymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  addPaymentText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: theme.colors.primary,

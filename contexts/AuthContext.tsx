@@ -38,6 +38,7 @@ const MOCK_USERS = [
     phone: '+1234567890',
     isCook: false,
     address: '123 Main Street, San Francisco, CA 94102',
+    profileImage: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
   },
   {
     id: '2',
@@ -47,6 +48,7 @@ const MOCK_USERS = [
     phone: '+1234567891',
     isCook: true,
     address: '456 North Beach, San Francisco, CA 94133',
+    profileImage: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
   },
   {
     id: '3',
@@ -56,6 +58,7 @@ const MOCK_USERS = [
     phone: '+1234567892',
     isCook: true,
     address: '789 Mission District, San Francisco, CA 94110',
+    profileImage: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
   },
 ];
 
@@ -124,13 +127,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false; // User already exists
       }
 
-      // Create new user
+      // Create new user with default profile image
       const newUser: User = {
         id: Date.now().toString(),
         email: userData.email,
         name: userData.name,
         phone: userData.phone,
         isCook: userData.isCook,
+        profileImage: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
       };
       
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
