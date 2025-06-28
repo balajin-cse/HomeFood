@@ -21,6 +21,7 @@ import { useCart } from '@/contexts/CartContext';
 import { useLocation } from '@/contexts/LocationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -41,6 +42,16 @@ interface PaymentMethod {
   expiryMonth?: number;
   expiryYear?: number;
   isDefault: boolean;
+}
+
+interface CookEarnings {
+  cookId: string;
+  cookName: string;
+  totalEarnings: number;
+  todayEarnings: number;
+  totalOrders: number;
+  completedOrders: number;
+  lastUpdated: string;
 }
 
 // Success Animation Component
@@ -173,6 +184,42 @@ export default function CheckoutScreen() {
     { id: 'dinner', label: 'Dinner Time', time: '6:00 PM - 7:00 PM' },
   ];
 
+  // Update cook earnings
+  const updateCookEarnings = async (cookId: string, cookName: string, orderTotal: number) => {
+    try {
+      const existingEarnings = await AsyncStorage.getItem('cookEarnings');
+      const earnings = existingEarnings ? JSON.parse(existingEarnings) : {};
+      
+      const today = new Date().toDateString();
+      const cookEarnings = earnings[cookId] || {
+        cookId,
+        cookName,
+        totalEarnings: 0,
+        todayEarnings: 0,
+        totalOrders: 0,
+        completedOrders: 0,
+        lastUpdated: today,
+      };
+
+      // Reset today's earnings if it's a new day
+      if (cookEarnings.lastUpdated !== today) {
+        cookEarnings.todayEarnings = 0;
+        cookEarnings.lastUpdated = today;
+      }
+
+      // Update earnings (cook gets 85% of order total, platform takes 15%)
+      const cookShare = orderTotal * 0.85;
+      cookEarnings.totalEarnings += cookShare;
+      cookEarnings.todayEarnings += cookShare;
+      cookEarnings.totalOrders += 1;
+
+      earnings[cookId] = cookEarnings;
+      await AsyncStorage.setItem('cookEarnings', JSON.stringify(earnings));
+    } catch (error) {
+      console.error('Error updating cook earnings:', error);
+    }
+  };
+
   const handlePlaceOrder = async () => {
     if (!user) {
       Alert.alert('Authentication Required', 'Please log in to place an order.');
@@ -200,35 +247,82 @@ export default function CheckoutScreen() {
       const selectedPaymentData = paymentMethods.find(payment => payment.id === selectedPayment);
       const selectedTimeData = deliveryTimes.find(time => time.id === selectedDeliveryTime);
 
-      // Create order object for tracking
-      const orderData = {
-        orderId,
-        trackingNumber,
-        items: cartData.items,
-        cookName: cartData.items[0]?.cookName || 'Unknown Cook',
-        totalPrice: cartData.total,
-        quantity: cartData.items.reduce((sum, item) => sum + item.quantity, 0),
-        deliveryAddress: selectedAddressData?.address || 'Unknown Address',
-        paymentMethod: selectedPaymentData?.brand ? `${selectedPaymentData.brand} ending in ${selectedPaymentData.last4}` : 'Unknown Payment',
-        deliveryTime: selectedTimeData?.time || 'ASAP',
-        deliveryInstructions: cartData.deliveryInstructions,
-        orderDate: new Date().toISOString(),
-        status: 'confirmed'
-      };
+      // Group items by cook to create separate orders for each cook
+      const ordersByCook = cartData.items.reduce((acc, item) => {
+        if (!acc[item.cookId]) {
+          acc[item.cookId] = {
+            cookId: item.cookId,
+            cookName: item.cookName,
+            items: [],
+            total: 0,
+          };
+        }
+        acc[item.cookId].items.push(item);
+        acc[item.cookId].total += item.price * item.quantity;
+        return acc;
+      }, {} as any);
 
-      // Store order in local storage for order history
+      // Create orders for each cook
+      const allOrders = [];
+      for (const cookOrder of Object.values(ordersByCook) as any[]) {
+        const orderData = {
+          orderId: `${orderId}_${cookOrder.cookId}`,
+          trackingNumber: `${trackingNumber}_${cookOrder.cookId.slice(-4)}`,
+          items: cookOrder.items,
+          cookId: cookOrder.cookId,
+          cookName: cookOrder.cookName,
+          customerName: user.name,
+          customerPhone: user.phone || '+1234567890',
+          totalPrice: cookOrder.total + (cartData.deliveryFee / Object.keys(ordersByCook).length) + (cartData.serviceFee / Object.keys(ordersByCook).length),
+          quantity: cookOrder.items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+          deliveryAddress: selectedAddressData?.address || 'Unknown Address',
+          paymentMethod: selectedPaymentData?.brand ? `${selectedPaymentData.brand} ending in ${selectedPaymentData.last4}` : 'Unknown Payment',
+          deliveryTime: selectedTimeData?.time || 'ASAP',
+          deliveryInstructions: cartData.deliveryInstructions,
+          orderDate: new Date().toISOString(),
+          status: 'confirmed'
+        };
+
+        allOrders.push(orderData);
+
+        // Update cook earnings
+        await updateCookEarnings(cookOrder.cookId, cookOrder.cookName, orderData.totalPrice);
+      }
+
+      // Store orders in local storage for order history
       try {
-        const existingOrders = await import('@react-native-async-storage/async-storage').then(
-          module => module.default.getItem('orderHistory')
-        );
+        const existingOrders = await AsyncStorage.getItem('orderHistory');
         const orders = existingOrders ? JSON.parse(existingOrders) : [];
-        orders.unshift(orderData); // Add to beginning of array
+        orders.unshift(...allOrders); // Add all orders to beginning of array
         
-        await import('@react-native-async-storage/async-storage').then(
-          module => module.default.setItem('orderHistory', JSON.stringify(orders))
-        );
+        await AsyncStorage.setItem('orderHistory', JSON.stringify(orders));
       } catch (storageError) {
-        console.error('Error saving order to history:', storageError);
+        console.error('Error saving orders to history:', storageError);
+      }
+
+      // Send notifications to cooks
+      try {
+        const existingNotifications = await AsyncStorage.getItem('cookNotifications');
+        const notifications = existingNotifications ? JSON.parse(existingNotifications) : [];
+        
+        for (const order of allOrders) {
+          const notification = {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            cookId: order.cookId,
+            cookName: order.cookName,
+            type: 'new_order',
+            orderId: order.orderId,
+            customerName: order.customerName,
+            message: `New order received from ${order.customerName}! Order #${order.trackingNumber} for $${order.totalPrice.toFixed(2)}`,
+            timestamp: new Date().toISOString(),
+            isRead: false,
+          };
+          notifications.unshift(notification);
+        }
+        
+        await AsyncStorage.setItem('cookNotifications', JSON.stringify(notifications));
+      } catch (notificationError) {
+        console.error('Error saving cook notifications:', notificationError);
       }
 
       // Clear the cart after successful order
