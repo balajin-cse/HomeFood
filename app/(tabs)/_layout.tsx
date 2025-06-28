@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, ChefHat, ShoppingBag, User, ShoppingCart } from 'lucide-react-native';
+import { Chrome as Home, ChefHat, ShoppingBag, User, ShoppingCart, Package, Truck } from 'lucide-react-native';
 import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 function CartTabIcon({ color, size }: { color: string; size: number }) {
   const { cartCount } = useCart();
@@ -22,6 +23,89 @@ function CartTabIcon({ color, size }: { color: string; size: number }) {
 }
 
 export default function TabLayout() {
+  const { user } = useAuth();
+
+  if (user?.isCook) {
+    // Cook interface
+    return (
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
+          tabBarStyle: {
+            backgroundColor: theme.colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: theme.colors.outline,
+            paddingBottom: 8,
+            paddingTop: 8,
+            height: 70,
+            shadowColor: theme.colors.shadow.medium,
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 1,
+            shadowRadius: 8,
+            elevation: 10,
+          },
+          tabBarLabelStyle: {
+            fontSize: 12,
+            fontFamily: 'Inter-Medium',
+            marginTop: 4,
+          },
+        }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Kitchen',
+            tabBarIcon: ({ color, size }) => (
+              <ChefHat color={color} size={size} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="orders"
+          options={{
+            title: 'Orders',
+            tabBarIcon: ({ color, size }) => (
+              <Package color={color} size={size} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="delivery"
+          options={{
+            title: 'Delivery',
+            tabBarIcon: ({ color, size }) => (
+              <Truck color={color} size={size} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, size }) => (
+              <User color={color} size={size} />
+            ),
+          }}
+        />
+        {/* Hide customer-only tabs for cooks */}
+        <Tabs.Screen
+          name="cook"
+          options={{
+            href: null, // Hide this tab
+          }}
+        />
+        <Tabs.Screen
+          name="cart"
+          options={{
+            href: null, // Hide this tab
+          }}
+        />
+      </Tabs>
+    );
+  }
+
+  // Customer interface (existing)
   return (
     <Tabs
       screenOptions={{
@@ -90,6 +174,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <User color={color} size={size} />
           ),
+        }}
+      />
+      {/* Hide cook-only tabs for customers */}
+      <Tabs.Screen
+        name="delivery"
+        options={{
+          href: null, // Hide this tab
         }}
       />
     </Tabs>
