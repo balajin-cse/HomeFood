@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ShoppingCart, Plus, Minus, Trash2, MapPin, Edit3 } from 'lucide-react-native';
+import { ShoppingCart, Plus, Minus, Trash2, MapPin, CreditCard as Edit3 } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
