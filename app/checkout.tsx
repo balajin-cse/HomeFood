@@ -371,7 +371,7 @@ export default function CheckoutScreen() {
       {/* Bottom Action */}
       <View style={styles.bottomAction}>
         <Button
-          title={isPlacingOrder ? 'Placing Order...' : `Place Order ${String.fromCharCode(8226)} $${cartData.total.toFixed(2)}`}
+          title={isPlacingOrder ? 'Placing Order...' : `Place Order • $${cartData.total.toFixed(2)}`}
           onPress={handlePlaceOrder}
           disabled={isPlacingOrder}
           size="large"
