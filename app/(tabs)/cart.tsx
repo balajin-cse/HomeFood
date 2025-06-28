@@ -46,19 +46,38 @@ export default function CartScreen() {
   };
 
   const handleClearCart = () => {
+    if (cartItems.length === 0) {
+      Alert.alert('Empty Cart', 'Your cart is already empty.');
+      return;
+    }
+
     Alert.alert(
       'Clear Cart',
       'Are you sure you want to remove all items from your cart?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear All', onPress: clearCart, style: 'destructive' },
+        { 
+          text: 'Clear All', 
+          onPress: () => {
+            clearCart();
+            Alert.alert('Cart Cleared', 'All items have been removed from your cart.');
+          }, 
+          style: 'destructive' 
+        },
       ]
     );
   };
 
   const handleCheckout = () => {
     if (!user) {
-      router.push('/auth');
+      Alert.alert(
+        'Login Required',
+        'Please log in to proceed with checkout.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => router.push('/auth') },
+        ]
+      );
       return;
     }
 
@@ -176,10 +195,11 @@ export default function CartScreen() {
                 <View style={styles.itemActions}>
                   <View style={styles.quantityControls}>
                     <TouchableOpacity
-                      style={styles.quantityButton}
+                      style={[styles.quantityButton, item.quantity === 1 && styles.quantityButtonDisabled]}
                       onPress={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      disabled={item.quantity === 1}
                     >
-                      <Minus size={16} color={theme.colors.primary} />
+                      <Minus size={16} color={item.quantity === 1 ? theme.colors.onSurfaceVariant : theme.colors.primary} />
                     </TouchableOpacity>
                     
                     <Text style={styles.quantityText}>{item.quantity}</Text>
@@ -412,6 +432,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  quantityButtonDisabled: {
+    opacity: 0.5,
   },
   quantityText: {
     fontSize: 16,

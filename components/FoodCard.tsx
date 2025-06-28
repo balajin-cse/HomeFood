@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Star, MapPin, Clock, Award, Users, Heart } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { theme } from '@/constants/theme';
 
 interface CookProfile {
@@ -56,6 +57,33 @@ interface FoodCardProps {
 }
 
 export function FoodCard({ item, cook, onPress, onCookPress }: FoodCardProps) {
+  const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
+  const isItemFavorite = isFavorite(item.id);
+
+  const handleFavoritePress = async () => {
+    try {
+      if (isItemFavorite) {
+        await removeFromFavorites(item.id);
+      } else {
+        await addToFavorites({
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          price: item.price,
+          image: item.image,
+          cookId: item.cookId,
+          cookName: item.cookName,
+          cookRating: item.cookRating,
+          distance: item.distance,
+          prepTime: item.prepTime,
+          tags: item.tags,
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
+
   const renderStars = (rating: number, size: number = 14) => {
     return Array.from({ length: 5 }, (_, index) => (
       <Star
@@ -85,8 +113,12 @@ export function FoodCard({ item, cook, onPress, onCookPress }: FoodCardProps) {
               </View>
             )}
           </View>
-          <TouchableOpacity style={styles.heartButton}>
-            <Heart size={20} color="white" />
+          <TouchableOpacity style={styles.heartButton} onPress={handleFavoritePress}>
+            <Heart 
+              size={20} 
+              color={isItemFavorite ? theme.colors.error : "white"} 
+              fill={isItemFavorite ? theme.colors.error : "transparent"}
+            />
           </TouchableOpacity>
         </View>
         

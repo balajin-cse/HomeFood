@@ -205,10 +205,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('user');
+      // Clear all user-related data
+      await AsyncStorage.multiRemove([
+        'user',
+        'cart',
+        'favorites',
+        'orderHistory',
+        'reportedIssues'
+      ]);
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if AsyncStorage fails, clear the user state
+      setUser(null);
     }
   };
 

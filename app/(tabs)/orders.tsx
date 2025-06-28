@@ -132,6 +132,16 @@ export default function OrdersScreen() {
   };
 
   const handleCancelOrder = (order: Order) => {
+    // Only allow cancellation for confirmed orders
+    if (order.status !== 'confirmed') {
+      Alert.alert(
+        'Cannot Cancel',
+        'This order cannot be cancelled as it is already being prepared or has been completed.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     Alert.alert(
       'Cancel Order',
       `Are you sure you want to cancel your order for ${order.items[0]?.title}? This action cannot be undone.`,

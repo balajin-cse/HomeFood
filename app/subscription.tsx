@@ -14,6 +14,7 @@ import { ArrowLeft, Crown, Check, Star, Zap, Shield } from 'lucide-react-native'
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 
 interface SubscriptionPlan {
@@ -82,11 +83,35 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export default function SubscriptionScreen() {
-  const { packages, purchasePackage } = useSubscription();
+  const { packages, purchasePackage, isSubscribed } = useSubscription();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState('weekly_plan');
   const [loading, setLoading] = useState(false);
 
   const handleSubscribe = async () => {
+    if (!user) {
+      Alert.alert(
+        'Login Required',
+        'Please log in to subscribe to our premium plans.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => router.push('/auth') },
+        ]
+      );
+      return;
+    }
+
+    if (isSubscribed) {
+      Alert.alert(
+        'Already Subscribed',
+        'You already have an active subscription! You can now order from amazing home cooks.',
+        [
+          { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
+        ]
+      );
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -107,16 +132,34 @@ export default function SubscriptionScreen() {
           Alert.alert('Purchase Failed', 'Please try again or contact support.');
         }
       } else {
-        // Fallback for web demo
-        Alert.alert(
-          'Subscription Activated!',
-          'Welcome to HomeFood Premium! You can now order from amazing home cooks.',
-          [
-            { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
-          ]
-        );
+        // Fallback for web demo - simulate successful subscription
+        const success = await purchasePackage({
+          identifier: selectedPlan,
+          packageType: 'CUSTOM',
+          product: {
+            identifier: selectedPlan,
+            price: SUBSCRIPTION_PLANS.find(p => p.id === selectedPlan)?.price || 24.99,
+            priceString: `$${SUBSCRIPTION_PLANS.find(p => p.id === selectedPlan)?.price || 24.99}`,
+            currencyCode: 'USD',
+            title: SUBSCRIPTION_PLANS.find(p => p.id === selectedPlan)?.name || 'Premium Plan',
+            description: 'Premium access to HomeFood'
+          }
+        });
+
+        if (success) {
+          Alert.alert(
+            'Subscription Activated!',
+            'Welcome to HomeFood Premium! You can now order from amazing home cooks.',
+            [
+              { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
+            ]
+          );
+        } else {
+          Alert.alert('Purchase Failed', 'Please try again or contact support.');
+        }
       }
     } catch (error) {
+      console.error('Subscription error:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -249,14 +292,17 @@ export default function SubscriptionScreen() {
           )}
         </View>
         <Button
-          title={loading ? 'Processing...' : 'Start Free Trial'}
+          title={loading ? 'Processing...' : isSubscribed ? 'Already Subscribed' : 'Start Free Trial'}
           onPress={handleSubscribe}
           disabled={loading}
           size="large"
           style={styles.subscribeButton}
         />
         <Text style={styles.trialText}>
-          7-day free trial, then ${selectedPlanData?.price}/{selectedPlanData?.period}
+          {isSubscribed 
+            ? 'You have an active subscription'
+            : `7-day free trial, then $${selectedPlanData?.price}/${selectedPlanData?.period}`
+          }
         </Text>
       </View>
     </View>
