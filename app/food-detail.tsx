@@ -102,8 +102,8 @@ export default function FoodDetailScreen() {
   const loadCookProfile = () => {
     // Mock cook profiles data - in a real app, this would come from an API
     const mockCooks: { [key: string]: CookProfile } = {
-      '1': {
-        id: '1',
+      'ck-maria': {
+        id: 'ck-maria',
         name: 'Maria Rodriguez',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -119,8 +119,8 @@ export default function FoodDetailScreen() {
         location: 'North Beach, SF',
         distance: 1.2,
       },
-      '2': {
-        id: '2',
+      'ck-sarah': {
+        id: 'ck-sarah',
         name: 'Sarah Johnson',
         avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.7,
@@ -136,8 +136,8 @@ export default function FoodDetailScreen() {
         location: 'Mission District, SF',
         distance: 0.8,
       },
-      '3': {
-        id: '3',
+      'ck-david': {
+        id: 'ck-david',
         name: 'David Chen',
         avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,
@@ -153,8 +153,8 @@ export default function FoodDetailScreen() {
         location: 'Chinatown, SF',
         distance: 2.1,
       },
-      '4': {
-        id: '4',
+      'ck-kenji': {
+        id: 'ck-kenji',
         name: 'Kenji Tanaka',
         avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
