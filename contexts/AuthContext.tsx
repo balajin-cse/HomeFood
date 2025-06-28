@@ -164,7 +164,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
         phone: supabaseUser.user_metadata?.phone || null,
         is_cook: supabaseUser.user_metadata?.is_cook || false,
-        profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        profile_image: supabaseUser.user_metadata?.is_cook ? 
+          'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop' :
+          'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
       };
 
       const { error } = await supabase
@@ -212,44 +214,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const createTestUsers = async (): Promise<{ success: boolean; error?: string }> => {
     try {
-      console.log('🧪 Creating test users...');
+      console.log('🧪 Creating test users via registration...');
       
       // Create customer test user
-      const customerResult = await supabase.auth.admin.createUser({
+      console.log('📝 Creating customer user...');
+      const customerResult = await supabase.auth.signUp({
         email: 'bala@example.com',
         password: 'pass123',
-        user_metadata: {
-          name: 'Bala',
-          phone: '+1234567890',
-          is_cook: false,
+        options: {
+          data: {
+            name: 'Bala',
+            phone: '+1234567890',
+            is_cook: false,
+          },
         },
-        email_confirm: true,
       });
 
-      if (customerResult.error) {
-        console.log('⚠️ Customer user might already exist:', customerResult.error.message);
+      if (customerResult.error && !customerResult.error.message.includes('already registered')) {
+        console.error('❌ Error creating customer user:', customerResult.error.message);
       } else {
-        console.log('✅ Customer test user created');
+        console.log('✅ Customer test user handled');
       }
 
       // Create cook test user
-      const cookResult = await supabase.auth.admin.createUser({
+      console.log('📝 Creating cook user...');
+      const cookResult = await supabase.auth.signUp({
         email: 'ck-cookname@homefood.app',
         password: 'cookpass',
-        user_metadata: {
-          name: 'Cook Name',
-          phone: '+1234567891',
-          is_cook: true,
+        options: {
+          data: {
+            name: 'Cook Name',
+            phone: '+1234567891',
+            is_cook: true,
+          },
         },
-        email_confirm: true,
       });
 
-      if (cookResult.error) {
-        console.log('⚠️ Cook user might already exist:', cookResult.error.message);
+      if (cookResult.error && !cookResult.error.message.includes('already registered')) {
+        console.error('❌ Error creating cook user:', cookResult.error.message);
       } else {
-        console.log('✅ Cook test user created');
+        console.log('✅ Cook test user handled');
       }
 
+      // If both users already exist, that's fine
+      if ((customerResult.error?.message.includes('already registered') || customerResult.data.user) &&
+          (cookResult.error?.message.includes('already registered') || cookResult.data.user)) {
+        return { success: true };
+      }
+
+      // If we got here and there were no errors, the users were created
       return { success: true };
     } catch (error: any) {
       console.error('❌ Error creating test users:', error);
@@ -269,28 +282,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) {
         console.error('❌ Login error:', error.message);
         
-        // If credentials are invalid, try to create test users first
-        if (error.message.includes('Invalid login credentials')) {
-          console.log('🧪 Invalid credentials, attempting to create test users...');
-          await createTestUsers();
+        // If credentials are invalid and it's one of our test accounts, try to create them
+        if (error.message.includes('Invalid login credentials') && 
+            (email === 'bala@example.com' || email === 'ck-cookname@homefood.app')) {
+          console.log('🧪 Test user not found, creating test users...');
           
-          // Try login again after creating test users
-          const retryResult = await supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
-            password,
-          });
+          const testUserResult = await createTestUsers();
+          if (testUserResult.success) {
+            console.log('🔄 Retrying login after test user creation...');
+            
+            // Wait a moment for the database to sync
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            const retryResult = await supabase.auth.signInWithPassword({
+              email: email.trim().toLowerCase(),
+              password,
+            });
 
-          if (retryResult.error) {
-            let userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
-            if (retryResult.error.message.includes('Email not confirmed')) {
-              userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
+            if (retryResult.error) {
+              let userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
+              if (retryResult.error.message.includes('Email not confirmed')) {
+                userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
+              }
+              return { success: false, error: userFriendlyError };
             }
-            return { success: false, error: userFriendlyError };
-          }
 
-          if (retryResult.data.user) {
-            console.log('✅ Login successful after creating test users for:', retryResult.data.user.email);
-            return { success: true };
+            if (retryResult.data.user) {
+              console.log('✅ Login successful after creating test users for:', retryResult.data.user.email);
+              return { success: true };
+            }
           }
         }
         
@@ -300,6 +320,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
         } else if (error.message.includes('Email not confirmed')) {
           userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
+        } else if (error.message.includes('Supabase not configured')) {
+          userFriendlyError = 'The app is not properly configured. Please check your environment variables.';
         }
         
         return { success: false, error: userFriendlyError };
@@ -344,6 +366,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return { success: false, error: 'Password must be at least 6 characters long.' };
         } else if (error.message.includes('invalid email')) {
           return { success: false, error: 'Please enter a valid email address.' };
+        } else if (error.message.includes('Supabase not configured')) {
+          return { success: false, error: 'The app is not properly configured. Please check your environment variables.' };
         }
         
         return { success: false, error: error.message };
