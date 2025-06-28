@@ -81,15 +81,13 @@ interface SavedAddress {
 }
 
 interface FilterOptions {
-  mealType: string;
+  sortBy: 'relevance' | 'price_low' | 'price_high' | 'rating' | 'distance' | 'prep_time';
   priceRange: { min: number; max: number };
-  distance: number;
-  rating: number;
-  prepTime: number;
+  maxDistance: number;
+  minRating: number;
+  maxPrepTime: number;
   cuisineTypes: string[];
   dietaryRestrictions: string[];
-  sortBy: 'relevance' | 'price_low' | 'price_high' | 'rating' | 'distance' | 'prep_time';
-  cookId?: string;
 }
 
 const MEAL_TYPES = [
@@ -100,22 +98,13 @@ const MEAL_TYPES = [
 ];
 
 const CUISINE_TYPES = [
-  'Italian', 'Asian', 'Mexican', 'American', 'Mediterranean', 'Indian', 
-  'Thai', 'Japanese', 'Chinese', 'French', 'Greek', 'Korean', 'Vietnamese'
+  'Italian', 'Asian', 'Mexican', 'Mediterranean', 'American', 'Indian', 
+  'French', 'Japanese', 'Thai', 'Greek', 'Chinese', 'Korean'
 ];
 
 const DIETARY_RESTRICTIONS = [
   'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 'Nut-Free', 
-  'Keto', 'Low-Carb', 'Halal', 'Kosher', 'Organic'
-];
-
-const SORT_OPTIONS = [
-  { id: 'relevance', label: 'Relevance' },
-  { id: 'price_low', label: 'Price: Low to High' },
-  { id: 'price_high', label: 'Price: High to Low' },
-  { id: 'rating', label: 'Highest Rated' },
-  { id: 'distance', label: 'Nearest First' },
-  { id: 'prep_time', label: 'Fastest Prep' },
+  'Keto', 'Paleo', 'Low-Carb', 'Halal', 'Kosher'
 ];
 
 export default function HomeScreen() {
@@ -124,6 +113,8 @@ export default function HomeScreen() {
   const { isSubscribed } = useSubscription();
   const params = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMealType, setSelectedMealType] = useState('all');
+  const [selectedCookId, setSelectedCookId] = useState<string | null>(null);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [cooks, setCooks] = useState<CookProfile[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -133,6 +124,15 @@ export default function HomeScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedCook, setSelectedCook] = useState<CookProfile | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<SavedAddress | null>(null);
+  const [filters, setFilters] = useState<FilterOptions>({
+    sortBy: 'relevance',
+    priceRange: { min: 0, max: 50 },
+    maxDistance: 25,
+    minRating: 0,
+    maxPrepTime: 120,
+    cuisineTypes: [],
+    dietaryRestrictions: [],
+  });
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([
     {
       id: '1',
@@ -154,18 +154,6 @@ export default function HomeScreen() {
     }
   ]);
 
-  const [filters, setFilters] = useState<FilterOptions>({
-    mealType: 'all',
-    priceRange: { min: 0, max: 50 },
-    distance: 10,
-    rating: 0,
-    prepTime: 120,
-    cuisineTypes: [],
-    dietaryRestrictions: [],
-    sortBy: 'relevance',
-    cookId: undefined,
-  });
-
   useEffect(() => {
     loadFoodItems();
     loadCooks();
@@ -176,7 +164,7 @@ export default function HomeScreen() {
     
     // Check if we have a cook filter from navigation params
     if (params.cookId) {
-      setFilters(prev => ({ ...prev, cookId: params.cookId as string }));
+      setSelectedCookId(params.cookId as string);
     }
   }, [params.cookId]);
 
@@ -422,7 +410,7 @@ export default function HomeScreen() {
         distance: 0.8,
         prepTime: 20,
         mealType: 'lunch',
-        tags: ['Healthy', 'Vegan', 'Gluten-Free', 'Protein Rich'],
+        tags: ['Healthy', 'Vegan', 'Protein Rich', 'Gluten-Free'],
         foodRating: 4.5,
         totalFoodReviews: 78,
         isPopular: false,
@@ -474,17 +462,17 @@ export default function HomeScreen() {
         distance: 1.5,
         prepTime: 25,
         mealType: 'lunch',
-        tags: ['Japanese', 'Traditional', 'Chicken', 'Bento'],
+        tags: ['Japanese', 'Traditional', 'Bento', 'Chicken'],
         foodRating: 4.7,
         totalFoodReviews: 112,
         isPopular: false,
         isNew: false,
         allergens: ['Soy', 'Gluten'],
         nutritionInfo: {
-          calories: 520,
+          calories: 580,
           protein: 32,
-          carbs: 58,
-          fat: 16,
+          carbs: 55,
+          fat: 22,
         },
       },
     ];
@@ -498,65 +486,74 @@ export default function HomeScreen() {
     setRefreshing(false);
   };
 
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.sortBy !== 'relevance') count++;
+    if (filters.priceRange.min > 0 || filters.priceRange.max < 50) count++;
+    if (filters.maxDistance < 25) count++;
+    if (filters.minRating > 0) count++;
+    if (filters.maxPrepTime < 120) count++;
+    if (filters.cuisineTypes.length > 0) count++;
+    if (filters.dietaryRestrictions.length > 0) count++;
+    return count;
+  };
+
   const applyFilters = (items: FoodItem[]) => {
     let filtered = [...items];
 
-    // Search query filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    // Apply search filter
+    if (searchQuery) {
       filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query) ||
-        item.cookName.toLowerCase().includes(query) ||
-        item.tags.some(tag => tag.toLowerCase().includes(query))
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.cookName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
-    // Cook filter (highest priority)
-    if (filters.cookId) {
-      filtered = filtered.filter(item => item.cookId === filters.cookId);
+    // Apply meal type filter
+    if (selectedMealType !== 'all') {
+      filtered = filtered.filter(item => item.mealType === selectedMealType);
     }
 
-    // Meal type filter
-    if (filters.mealType !== 'all') {
-      filtered = filtered.filter(item => item.mealType === filters.mealType);
+    // Apply cook filter
+    if (selectedCookId) {
+      filtered = filtered.filter(item => item.cookId === selectedCookId);
     }
 
-    // Price range filter
+    // Apply price range filter
     filtered = filtered.filter(item => 
       item.price >= filters.priceRange.min && item.price <= filters.priceRange.max
     );
 
-    // Distance filter
-    filtered = filtered.filter(item => item.distance <= filters.distance);
+    // Apply distance filter
+    filtered = filtered.filter(item => item.distance <= filters.maxDistance);
 
-    // Rating filter
-    if (filters.rating > 0) {
-      filtered = filtered.filter(item => item.foodRating >= filters.rating);
+    // Apply rating filter
+    if (filters.minRating > 0) {
+      filtered = filtered.filter(item => item.foodRating >= filters.minRating);
     }
 
-    // Prep time filter
-    filtered = filtered.filter(item => item.prepTime <= filters.prepTime);
+    // Apply prep time filter
+    filtered = filtered.filter(item => item.prepTime <= filters.maxPrepTime);
 
-    // Cuisine type filter
+    // Apply cuisine type filter
     if (filters.cuisineTypes.length > 0) {
       filtered = filtered.filter(item =>
-        filters.cuisineTypes.some(cuisine =>
-          item.tags.some(tag => tag.toLowerCase().includes(cuisine.toLowerCase()))
-        )
+        item.tags.some(tag => filters.cuisineTypes.includes(tag))
       );
     }
 
-    // Dietary restrictions filter
+    // Apply dietary restrictions filter
     if (filters.dietaryRestrictions.length > 0) {
       filtered = filtered.filter(item =>
         filters.dietaryRestrictions.every(restriction =>
-          item.tags.some(tag => tag.toLowerCase().includes(restriction.toLowerCase()))
+          item.tags.includes(restriction)
         )
       );
     }
 
-    // Sort results
+    // Apply sorting
     switch (filters.sortBy) {
       case 'price_low':
         filtered.sort((a, b) => a.price - b.price);
@@ -573,9 +570,13 @@ export default function HomeScreen() {
       case 'prep_time':
         filtered.sort((a, b) => a.prepTime - b.prepTime);
         break;
-      default: // relevance
-        // Keep original order for relevance
-        break;
+      default:
+        // Relevance - keep original order but prioritize popular items
+        filtered.sort((a, b) => {
+          if (a.isPopular && !b.isPopular) return -1;
+          if (!a.isPopular && b.isPopular) return 1;
+          return b.foodRating - a.foodRating;
+        });
     }
 
     return filtered;
@@ -631,34 +632,19 @@ export default function HomeScreen() {
   };
 
   const clearCookFilter = () => {
-    setFilters(prev => ({ ...prev, cookId: undefined }));
+    setSelectedCookId(null);
   };
 
   const resetFilters = () => {
     setFilters({
-      mealType: 'all',
+      sortBy: 'relevance',
       priceRange: { min: 0, max: 50 },
-      distance: 10,
-      rating: 0,
-      prepTime: 120,
+      maxDistance: 25,
+      minRating: 0,
+      maxPrepTime: 120,
       cuisineTypes: [],
       dietaryRestrictions: [],
-      sortBy: 'relevance',
-      cookId: filters.cookId, // Keep cook filter if set
     });
-  };
-
-  const getActiveFilterCount = () => {
-    let count = 0;
-    if (filters.mealType !== 'all') count++;
-    if (filters.priceRange.min > 0 || filters.priceRange.max < 50) count++;
-    if (filters.distance < 10) count++;
-    if (filters.rating > 0) count++;
-    if (filters.prepTime < 120) count++;
-    if (filters.cuisineTypes.length > 0) count++;
-    if (filters.dietaryRestrictions.length > 0) count++;
-    if (filters.sortBy !== 'relevance') count++;
-    return count;
   };
 
   const getGreeting = () => {
@@ -669,7 +655,7 @@ export default function HomeScreen() {
   };
 
   const displayAddress = selectedAddress?.address || address || 'Getting your location...';
-  const selectedCookData = filters.cookId ? cooks.find(c => c.id === filters.cookId) : null;
+  const selectedCookData = selectedCookId ? cooks.find(c => c.id === selectedCookId) : null;
   const activeFilterCount = getActiveFilterCount();
 
   const renderStars = (rating: number, size: number = 14) => {
@@ -733,10 +719,10 @@ export default function HomeScreen() {
             />
           </View>
           <TouchableOpacity 
-            style={[styles.filterButton, activeFilterCount > 0 && styles.filterButtonActive]}
+            style={styles.filterButton}
             onPress={() => setShowFilterModal(true)}
           >
-            <SlidersHorizontal size={20} color={activeFilterCount > 0 ? 'white' : theme.colors.primary} />
+            <SlidersHorizontal size={20} color={theme.colors.primary} />
             {activeFilterCount > 0 && (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
@@ -782,15 +768,15 @@ export default function HomeScreen() {
               key={mealType.id}
               style={[
                 styles.mealTypeChip,
-                filters.mealType === mealType.id && styles.mealTypeChipActive,
+                selectedMealType === mealType.id && styles.mealTypeChipActive,
               ]}
-              onPress={() => setFilters(prev => ({ ...prev, mealType: mealType.id }))}
+              onPress={() => setSelectedMealType(mealType.id)}
             >
               <Text style={styles.mealTypeEmoji}>{mealType.emoji}</Text>
               <Text
                 style={[
                   styles.mealTypeText,
-                  filters.mealType === mealType.id && styles.mealTypeTextActive,
+                  selectedMealType === mealType.id && styles.mealTypeTextActive,
                 ]}
               >
                 {mealType.label}
@@ -798,6 +784,18 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+
+        {/* Results Counter */}
+        <View style={styles.resultsSection}>
+          <Text style={styles.resultsText}>
+            {filteredFoodItems.length} {filteredFoodItems.length === 1 ? 'dish' : 'dishes'} found
+          </Text>
+          {activeFilterCount > 0 && (
+            <TouchableOpacity onPress={resetFilters}>
+              <Text style={styles.clearFiltersText}>Clear filters</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Premium Banner - Only show if not subscribed */}
         {!isSubscribed && (
@@ -823,14 +821,6 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Results Summary */}
-        <View style={styles.resultsSection}>
-          <Text style={styles.resultsText}>
-            {filteredFoodItems.length} {filteredFoodItems.length === 1 ? 'dish' : 'dishes'} found
-            {selectedCookData && ` from ${selectedCookData.name}`}
-          </Text>
-        </View>
-
         {/* Food List */}
         <View style={styles.foodListContainer}>
           {filteredFoodItems.length === 0 ? (
@@ -844,25 +834,21 @@ export default function HomeScreen() {
                   : 'Try adjusting your search or filters'
                 }
               </Text>
-              {(selectedCookData || activeFilterCount > 0) && (
-                <View style={styles.emptyStateActions}>
-                  {selectedCookData && (
-                    <Button
-                      title="Clear Cook Filter"
-                      onPress={clearCookFilter}
-                      variant="outline"
-                      style={styles.clearFilterButtonLarge}
-                    />
-                  )}
-                  {activeFilterCount > 0 && (
-                    <Button
-                      title="Reset Filters"
-                      onPress={resetFilters}
-                      variant="outline"
-                      style={styles.clearFilterButtonLarge}
-                    />
-                  )}
-                </View>
+              {selectedCookData && (
+                <Button
+                  title="Clear Cook Filter"
+                  onPress={clearCookFilter}
+                  variant="outline"
+                  style={styles.clearFilterButtonLarge}
+                />
+              )}
+              {activeFilterCount > 0 && (
+                <Button
+                  title="Reset All Filters"
+                  onPress={resetFilters}
+                  variant="outline"
+                  style={styles.clearFilterButtonLarge}
+                />
               )}
             </Card>
           ) : (
@@ -878,276 +864,6 @@ export default function HomeScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Filter Modal */}
-      <Modal
-        visible={showFilterModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowFilterModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Filters</Text>
-            <TouchableOpacity 
-              onPress={() => setShowFilterModal(false)}
-              style={styles.modalCloseButton}
-            >
-              <X size={24} color={theme.colors.onSurface} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {/* Sort By */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Sort By</Text>
-              <View style={styles.filterOptions}>
-                {SORT_OPTIONS.map((option) => (
-                  <TouchableOpacity
-                    key={option.id}
-                    style={[
-                      styles.filterOption,
-                      filters.sortBy === option.id && styles.filterOptionSelected
-                    ]}
-                    onPress={() => setFilters(prev => ({ ...prev, sortBy: option.id as any }))}
-                  >
-                    <Text style={[
-                      styles.filterOptionText,
-                      filters.sortBy === option.id && styles.filterOptionTextSelected
-                    ]}>
-                      {option.label}
-                    </Text>
-                    {filters.sortBy === option.id && (
-                      <Check size={20} color={theme.colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Price Range */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Price Range</Text>
-              <View style={styles.priceRangeContainer}>
-                <View style={styles.priceInputContainer}>
-                  <Text style={styles.priceLabel}>Min: ${filters.priceRange.min}</Text>
-                  <View style={styles.priceSlider}>
-                    {/* Simple price range selector */}
-                    <View style={styles.priceOptions}>
-                      {[0, 10, 20, 30, 40, 50].map((price) => (
-                        <TouchableOpacity
-                          key={price}
-                          style={[
-                            styles.priceOption,
-                            filters.priceRange.min === price && styles.priceOptionSelected
-                          ]}
-                          onPress={() => setFilters(prev => ({ 
-                            ...prev, 
-                            priceRange: { ...prev.priceRange, min: price }
-                          }))}
-                        >
-                          <Text style={[
-                            styles.priceOptionText,
-                            filters.priceRange.min === price && styles.priceOptionTextSelected
-                          ]}>
-                            ${price}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.priceInputContainer}>
-                  <Text style={styles.priceLabel}>Max: ${filters.priceRange.max}</Text>
-                  <View style={styles.priceSlider}>
-                    <View style={styles.priceOptions}>
-                      {[20, 30, 40, 50, 60, 100].map((price) => (
-                        <TouchableOpacity
-                          key={price}
-                          style={[
-                            styles.priceOption,
-                            filters.priceRange.max === price && styles.priceOptionSelected
-                          ]}
-                          onPress={() => setFilters(prev => ({ 
-                            ...prev, 
-                            priceRange: { ...prev.priceRange, max: price }
-                          }))}
-                        >
-                          <Text style={[
-                            styles.priceOptionText,
-                            filters.priceRange.max === price && styles.priceOptionTextSelected
-                          ]}>
-                            ${price}{price === 100 ? '+' : ''}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Distance */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Distance: {filters.distance}km</Text>
-              <View style={styles.distanceOptions}>
-                {[1, 3, 5, 10, 15, 25].map((distance) => (
-                  <TouchableOpacity
-                    key={distance}
-                    style={[
-                      styles.distanceOption,
-                      filters.distance === distance && styles.distanceOptionSelected
-                    ]}
-                    onPress={() => setFilters(prev => ({ ...prev, distance }))}
-                  >
-                    <Text style={[
-                      styles.distanceOptionText,
-                      filters.distance === distance && styles.distanceOptionTextSelected
-                    ]}>
-                      {distance}km
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Rating */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Minimum Rating</Text>
-              <View style={styles.ratingOptions}>
-                {[0, 3, 4, 4.5].map((rating) => (
-                  <TouchableOpacity
-                    key={rating}
-                    style={[
-                      styles.ratingOption,
-                      filters.rating === rating && styles.ratingOptionSelected
-                    ]}
-                    onPress={() => setFilters(prev => ({ ...prev, rating }))}
-                  >
-                    <View style={styles.ratingStars}>
-                      {rating === 0 ? (
-                        <Text style={styles.ratingText}>Any Rating</Text>
-                      ) : (
-                        <>
-                          {renderStars(rating, 16)}
-                          <Text style={styles.ratingText}>{rating}+</Text>
-                        </>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Prep Time */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Max Prep Time: {filters.prepTime} min</Text>
-              <View style={styles.prepTimeOptions}>
-                {[15, 30, 45, 60, 90, 120].map((time) => (
-                  <TouchableOpacity
-                    key={time}
-                    style={[
-                      styles.prepTimeOption,
-                      filters.prepTime === time && styles.prepTimeOptionSelected
-                    ]}
-                    onPress={() => setFilters(prev => ({ ...prev, prepTime: time }))}
-                  >
-                    <Text style={[
-                      styles.prepTimeOptionText,
-                      filters.prepTime === time && styles.prepTimeOptionTextSelected
-                    ]}>
-                      {time} min
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Cuisine Types */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Cuisine Types</Text>
-              <View style={styles.cuisineOptions}>
-                {CUISINE_TYPES.map((cuisine) => (
-                  <TouchableOpacity
-                    key={cuisine}
-                    style={[
-                      styles.cuisineOption,
-                      filters.cuisineTypes.includes(cuisine) && styles.cuisineOptionSelected
-                    ]}
-                    onPress={() => {
-                      setFilters(prev => ({
-                        ...prev,
-                        cuisineTypes: prev.cuisineTypes.includes(cuisine)
-                          ? prev.cuisineTypes.filter(c => c !== cuisine)
-                          : [...prev.cuisineTypes, cuisine]
-                      }));
-                    }}
-                  >
-                    <Text style={[
-                      styles.cuisineOptionText,
-                      filters.cuisineTypes.includes(cuisine) && styles.cuisineOptionTextSelected
-                    ]}>
-                      {cuisine}
-                    </Text>
-                    {filters.cuisineTypes.includes(cuisine) && (
-                      <Check size={16} color="white" />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Dietary Restrictions */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterSectionTitle}>Dietary Restrictions</Text>
-              <View style={styles.dietaryOptions}>
-                {DIETARY_RESTRICTIONS.map((restriction) => (
-                  <TouchableOpacity
-                    key={restriction}
-                    style={[
-                      styles.dietaryOption,
-                      filters.dietaryRestrictions.includes(restriction) && styles.dietaryOptionSelected
-                    ]}
-                    onPress={() => {
-                      setFilters(prev => ({
-                        ...prev,
-                        dietaryRestrictions: prev.dietaryRestrictions.includes(restriction)
-                          ? prev.dietaryRestrictions.filter(d => d !== restriction)
-                          : [...prev.dietaryRestrictions, restriction]
-                      }));
-                    }}
-                  >
-                    <Text style={[
-                      styles.dietaryOptionText,
-                      filters.dietaryRestrictions.includes(restriction) && styles.dietaryOptionTextSelected
-                    ]}>
-                      {restriction}
-                    </Text>
-                    {filters.dietaryRestrictions.includes(restriction) && (
-                      <Check size={16} color="white" />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-
-          {/* Filter Actions */}
-          <View style={styles.filterActions}>
-            <Button
-              title="Reset"
-              variant="outline"
-              onPress={resetFilters}
-              style={styles.filterResetButton}
-            />
-            <Button
-              title={`Apply Filters (${filteredFoodItems.length})`}
-              onPress={() => setShowFilterModal(false)}
-              style={styles.filterApplyButton}
-            />
-          </View>
-        </View>
-      </Modal>
 
       {/* Cook Profile Modal */}
       <Modal
@@ -1244,7 +960,7 @@ export default function HomeScreen() {
                   title="View Menu"
                   onPress={() => {
                     setShowCookProfile(false);
-                    setFilters(prev => ({ ...prev, cookId: selectedCook.id }));
+                    setSelectedCookId(selectedCook.id);
                   }}
                   style={styles.actionButton}
                 />
@@ -1260,6 +976,263 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
         )}
+      </Modal>
+
+      {/* Filter Modal */}
+      <Modal
+        visible={showFilterModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowFilterModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Filter & Sort</Text>
+            <TouchableOpacity 
+              onPress={() => setShowFilterModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <X size={24} color={theme.colors.onSurface} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {/* Sort By */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Sort By</Text>
+              <View style={styles.filterOptions}>
+                {[
+                  { value: 'relevance', label: 'Relevance' },
+                  { value: 'price_low', label: 'Price: Low to High' },
+                  { value: 'price_high', label: 'Price: High to Low' },
+                  { value: 'rating', label: 'Highest Rated' },
+                  { value: 'distance', label: 'Nearest First' },
+                  { value: 'prep_time', label: 'Fastest Prep Time' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.filterOption,
+                      filters.sortBy === option.value && styles.filterOptionSelected
+                    ]}
+                    onPress={() => setFilters(prev => ({ ...prev, sortBy: option.value as any }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      filters.sortBy === option.value && styles.filterOptionTextSelected
+                    ]}>
+                      {option.label}
+                    </Text>
+                    {filters.sortBy === option.value && (
+                      <Check size={16} color={theme.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Price Range */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Price Range</Text>
+              <View style={styles.priceRangeContainer}>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.priceLabel}>Min</Text>
+                  <Input
+                    value={filters.priceRange.min.toString()}
+                    onChangeText={(text) => {
+                      const value = parseInt(text) || 0;
+                      setFilters(prev => ({ 
+                        ...prev, 
+                        priceRange: { ...prev.priceRange, min: value }
+                      }));
+                    }}
+                    keyboardType="numeric"
+                    style={styles.priceInput}
+                  />
+                </View>
+                <Text style={styles.priceSeparator}>to</Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.priceLabel}>Max</Text>
+                  <Input
+                    value={filters.priceRange.max.toString()}
+                    onChangeText={(text) => {
+                      const value = parseInt(text) || 50;
+                      setFilters(prev => ({ 
+                        ...prev, 
+                        priceRange: { ...prev.priceRange, max: value }
+                      }));
+                    }}
+                    keyboardType="numeric"
+                    style={styles.priceInput}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Distance */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Maximum Distance</Text>
+              <View style={styles.sliderContainer}>
+                <Text style={styles.sliderValue}>{filters.maxDistance}km</Text>
+                <View style={styles.sliderOptions}>
+                  {[1, 5, 10, 15, 25].map((distance) => (
+                    <TouchableOpacity
+                      key={distance}
+                      style={[
+                        styles.sliderOption,
+                        filters.maxDistance === distance && styles.sliderOptionSelected
+                      ]}
+                      onPress={() => setFilters(prev => ({ ...prev, maxDistance: distance }))}
+                    >
+                      <Text style={[
+                        styles.sliderOptionText,
+                        filters.maxDistance === distance && styles.sliderOptionTextSelected
+                      ]}>
+                        {distance}km
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Minimum Rating */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Minimum Rating</Text>
+              <View style={styles.ratingOptions}>
+                {[
+                  { value: 0, label: 'Any Rating' },
+                  { value: 3, label: '3+ Stars' },
+                  { value: 4, label: '4+ Stars' },
+                  { value: 4.5, label: '4.5+ Stars' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.filterOption,
+                      filters.minRating === option.value && styles.filterOptionSelected
+                    ]}
+                    onPress={() => setFilters(prev => ({ ...prev, minRating: option.value }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      filters.minRating === option.value && styles.filterOptionTextSelected
+                    ]}>
+                      {option.label}
+                    </Text>
+                    {filters.minRating === option.value && (
+                      <Check size={16} color={theme.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Max Prep Time */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Maximum Prep Time</Text>
+              <View style={styles.sliderContainer}>
+                <Text style={styles.sliderValue}>{filters.maxPrepTime} minutes</Text>
+                <View style={styles.sliderOptions}>
+                  {[15, 30, 45, 60, 120].map((time) => (
+                    <TouchableOpacity
+                      key={time}
+                      style={[
+                        styles.sliderOption,
+                        filters.maxPrepTime === time && styles.sliderOptionSelected
+                      ]}
+                      onPress={() => setFilters(prev => ({ ...prev, maxPrepTime: time }))}
+                    >
+                      <Text style={[
+                        styles.sliderOptionText,
+                        filters.maxPrepTime === time && styles.sliderOptionTextSelected
+                      ]}>
+                        {time}min
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Cuisine Types */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Cuisine Types</Text>
+              <View style={styles.chipContainer}>
+                {CUISINE_TYPES.map((cuisine) => (
+                  <TouchableOpacity
+                    key={cuisine}
+                    style={[
+                      styles.chip,
+                      filters.cuisineTypes.includes(cuisine) && styles.chipSelected
+                    ]}
+                    onPress={() => {
+                      setFilters(prev => ({
+                        ...prev,
+                        cuisineTypes: prev.cuisineTypes.includes(cuisine)
+                          ? prev.cuisineTypes.filter(c => c !== cuisine)
+                          : [...prev.cuisineTypes, cuisine]
+                      }));
+                    }}
+                  >
+                    <Text style={[
+                      styles.chipText,
+                      filters.cuisineTypes.includes(cuisine) && styles.chipTextSelected
+                    ]}>
+                      {cuisine}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Dietary Restrictions */}
+            <View style={styles.filterSection}>
+              <Text style={styles.filterSectionTitle}>Dietary Restrictions</Text>
+              <View style={styles.chipContainer}>
+                {DIETARY_RESTRICTIONS.map((restriction) => (
+                  <TouchableOpacity
+                    key={restriction}
+                    style={[
+                      styles.chip,
+                      filters.dietaryRestrictions.includes(restriction) && styles.chipSelected
+                    ]}
+                    onPress={() => {
+                      setFilters(prev => ({
+                        ...prev,
+                        dietaryRestrictions: prev.dietaryRestrictions.includes(restriction)
+                          ? prev.dietaryRestrictions.filter(r => r !== restriction)
+                          : [...prev.dietaryRestrictions, restriction]
+                      }));
+                    }}
+                  >
+                    <Text style={[
+                      styles.chipText,
+                      filters.dietaryRestrictions.includes(restriction) && styles.chipTextSelected
+                    ]}>
+                      {restriction}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Filter Actions */}
+          <View style={styles.filterActions}>
+            <Button
+              title="Reset"
+              variant="outline"
+              onPress={resetFilters}
+              style={styles.filterActionButton}
+            />
+            <Button
+              title={`Apply Filters (${filteredFoodItems.length})`}
+              onPress={() => setShowFilterModal(false)}
+              style={styles.filterActionButton}
+            />
+          </View>
+        </View>
       </Modal>
 
       {/* Address Selection Modal */}
@@ -1458,9 +1431,6 @@ const styles = StyleSheet.create({
     elevation: 3,
     position: 'relative',
   },
-  filterButtonActive: {
-    backgroundColor: theme.colors.primary,
-  },
   filterBadge: {
     position: 'absolute',
     top: -4,
@@ -1471,6 +1441,7 @@ const styles = StyleSheet.create({
     height: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   filterBadgeText: {
     fontSize: 10,
@@ -1554,6 +1525,23 @@ const styles = StyleSheet.create({
   mealTypeTextActive: {
     color: 'white',
   },
+  resultsSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  resultsText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
   premiumBannerContainer: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
@@ -1587,15 +1575,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: 'white',
   },
-  resultsSection: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-  },
-  resultsText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurfaceVariant,
-  },
   foodListContainer: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.xxl,
@@ -1616,13 +1595,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
     textAlign: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  emptyStateActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
   },
   ratingStars: {
     flexDirection: 'row',
@@ -1660,224 +1632,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
   },
-  // Filter Modal Styles
-  filterSection: {
-    marginBottom: theme.spacing.xl,
-  },
-  filterSectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.lg,
-  },
-  filterOptions: {
-    gap: theme.spacing.sm,
-  },
-  filterOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-  },
-  filterOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.surfaceVariant,
-  },
-  filterOptionText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurface,
-  },
-  filterOptionTextSelected: {
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
-  },
-  priceRangeContainer: {
-    gap: theme.spacing.lg,
-  },
-  priceInputContainer: {
-    gap: theme.spacing.md,
-  },
-  priceLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  priceSlider: {
-    marginTop: theme.spacing.sm,
-  },
-  priceOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  priceOption: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-  },
-  priceOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  priceOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  priceOptionTextSelected: {
-    color: 'white',
-  },
-  distanceOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  distanceOption: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-  },
-  distanceOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  distanceOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  distanceOptionTextSelected: {
-    color: 'white',
-  },
-  ratingOptions: {
-    gap: theme.spacing.sm,
-  },
-  ratingOption: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-  },
-  ratingOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.surfaceVariant,
-  },
-  ratingText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-    marginLeft: theme.spacing.sm,
-  },
-  prepTimeOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  prepTimeOption: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-  },
-  prepTimeOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  prepTimeOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  prepTimeOptionTextSelected: {
-    color: 'white',
-  },
-  cuisineOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  cuisineOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-    gap: theme.spacing.xs,
-  },
-  cuisineOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  cuisineOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  cuisineOptionTextSelected: {
-    color: 'white',
-  },
-  dietaryOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  dietaryOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-    gap: theme.spacing.xs,
-  },
-  dietaryOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  dietaryOptionText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  dietaryOptionTextSelected: {
-    color: 'white',
-  },
-  filterActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.outline,
-  },
-  filterResetButton: {
-    flex: 1,
-  },
-  filterApplyButton: {
-    flex: 2,
-  },
-  // Cook Profile Modal Styles
   cookProfileHeader: {
     flexDirection: 'row',
     gap: theme.spacing.lg,
@@ -2057,5 +1811,139 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: theme.colors.primary,
+  },
+  // Filter Modal Styles
+  filterSection: {
+    marginBottom: theme.spacing.xl,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.lg,
+  },
+  filterOptions: {
+    gap: theme.spacing.sm,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  filterOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.surfaceVariant,
+  },
+  filterOptionText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurface,
+  },
+  filterOptionTextSelected: {
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.primary,
+  },
+  priceRangeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  priceInputContainer: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.xs,
+  },
+  priceInput: {
+    marginBottom: 0,
+  },
+  priceSeparator: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+    marginTop: 20,
+  },
+  sliderContainer: {
+    gap: theme.spacing.md,
+  },
+  sliderValue: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
+    textAlign: 'center',
+  },
+  sliderOptions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  sliderOption: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'center',
+  },
+  sliderOptionSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  sliderOptionText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  sliderOptionTextSelected: {
+    color: 'white',
+  },
+  ratingOptions: {
+    gap: theme.spacing.sm,
+  },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  chipSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary,
+  },
+  chipText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: theme.colors.onSurface,
+  },
+  chipTextSelected: {
+    color: 'white',
+  },
+  filterActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.outline,
+  },
+  filterActionButton: {
+    flex: 1,
   },
 });
