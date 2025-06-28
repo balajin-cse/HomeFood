@@ -11,7 +11,7 @@ import {
   Modal,
   Dimensions,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Search, MapPin, Filter, Crown, ChevronDown, Plus, Check, Navigation, X, Star, Award, Clock, Users, Heart } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Input } from '@/components/ui/Input';
@@ -91,8 +91,10 @@ export default function HomeScreen() {
   const { address, updateLocation } = useLocation();
   const { user } = useAuth();
   const { isSubscribed } = useSubscription();
+  const params = useLocalSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMealType, setSelectedMealType] = useState('all');
+  const [selectedCookId, setSelectedCookId] = useState<string | null>(null);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [cooks, setCooks] = useState<CookProfile[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -129,7 +131,12 @@ export default function HomeScreen() {
     if (!selectedAddress && savedAddresses.length > 0) {
       setSelectedAddress(savedAddresses[0]);
     }
-  }, []);
+    
+    // Check if we have a cook filter from navigation params
+    if (params.cookId) {
+      setSelectedCookId(params.cookId as string);
+    }
+  }, [params.cookId]);
 
   const loadCooks = async () => {
     // Enhanced mock cook data with detailed profiles
@@ -309,6 +316,57 @@ export default function HomeScreen() {
           fat: 32,
         },
       },
+      // Additional items for Maria Rodriguez
+      {
+        id: '5',
+        title: 'Margherita Pizza',
+        description: 'Traditional Neapolitan pizza with fresh mozzarella, basil, and San Marzano tomatoes',
+        price: 19.99,
+        image: 'https://images.pexels.com/photos/315755/pexels-photo-315755.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '1',
+        cookName: 'Maria Rodriguez',
+        cookRating: 4.9,
+        distance: 1.2,
+        prepTime: 30,
+        mealType: 'dinner',
+        tags: ['Italian', 'Pizza', 'Traditional', 'Vegetarian'],
+        foodRating: 4.7,
+        totalFoodReviews: 45,
+        isPopular: false,
+        isNew: false,
+        allergens: ['Dairy', 'Gluten'],
+        nutritionInfo: {
+          calories: 420,
+          protein: 18,
+          carbs: 52,
+          fat: 16,
+        },
+      },
+      {
+        id: '6',
+        title: 'Osso Buco Risotto',
+        description: 'Slow-braised veal shanks with creamy saffron risotto and gremolata',
+        price: 28.99,
+        image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800',
+        cookId: '1',
+        cookName: 'Maria Rodriguez',
+        cookRating: 4.9,
+        distance: 1.2,
+        prepTime: 60,
+        mealType: 'dinner',
+        tags: ['Italian', 'Gourmet', 'Risotto', 'Meat'],
+        foodRating: 4.9,
+        totalFoodReviews: 32,
+        isPopular: true,
+        isNew: false,
+        allergens: ['Dairy', 'Gluten'],
+        nutritionInfo: {
+          calories: 650,
+          protein: 42,
+          carbs: 48,
+          fat: 28,
+        },
+      },
     ];
     setFoodItems(mockFoodItems);
   };
@@ -326,7 +384,8 @@ export default function HomeScreen() {
                          item.cookName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesMealType = selectedMealType === 'all' || item.mealType === selectedMealType;
-    return matchesSearch && matchesMealType;
+    const matchesCook = !selectedCookId || item.cookId === selectedCookId;
+    return matchesSearch && matchesMealType && matchesCook;
   });
 
   const handleFoodItemPress = (item: FoodItem) => {
@@ -376,6 +435,10 @@ export default function HomeScreen() {
     setShowAddressModal(false);
   };
 
+  const clearCookFilter = () => {
+    setSelectedCookId(null);
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good Morning';
@@ -384,6 +447,7 @@ export default function HomeScreen() {
   };
 
   const displayAddress = selectedAddress?.address || address || 'Getting your location...';
+  const selectedCookData = selectedCookId ? cooks.find(c => c.id === selectedCookId) : null;
 
   const renderStars = (rating: number, size: number = 14) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -450,6 +514,31 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Cook Filter Banner */}
+        {selectedCookData && (
+          <View style={styles.cookFilterBanner}>
+            <Card style={styles.cookFilterCard}>
+              <View style={styles.cookFilterContent}>
+                <Image source={{ uri: selectedCookData.avatar }} style={styles.cookFilterAvatar} />
+                <View style={styles.cookFilterInfo}>
+                  <Text style={styles.cookFilterName}>Showing dishes by {selectedCookData.name}</Text>
+                  <View style={styles.cookFilterRating}>
+                    <View style={styles.ratingStars}>
+                      {renderStars(selectedCookData.rating, 12)}
+                    </View>
+                    <Text style={styles.cookFilterRatingText}>
+                      {selectedCookData.rating} • {selectedCookData.specialties.join(', ')}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={clearCookFilter} style={styles.clearFilterButton}>
+                  <X size={20} color={theme.colors.onSurfaceVariant} />
+                </TouchableOpacity>
+              </View>
+            </Card>
+          </View>
+        )}
+
         {/* Meal Type Filter */}
         <ScrollView
           horizontal
@@ -507,114 +596,33 @@ export default function HomeScreen() {
         <View style={styles.foodListContainer}>
           {filteredFoodItems.length === 0 ? (
             <Card style={styles.emptyState}>
-              <Text style={styles.emptyStateTitle}>No dishes found</Text>
-              <Text style={styles.emptyStateText}>
-                Try adjusting your search or meal type filter
+              <Text style={styles.emptyStateTitle}>
+                {selectedCookData ? `No dishes found from ${selectedCookData.name}` : 'No dishes found'}
               </Text>
+              <Text style={styles.emptyStateText}>
+                {selectedCookData 
+                  ? 'This cook might not have dishes matching your current filters'
+                  : 'Try adjusting your search or meal type filter'
+                }
+              </Text>
+              {selectedCookData && (
+                <Button
+                  title="Clear Cook Filter"
+                  onPress={clearCookFilter}
+                  variant="outline"
+                  style={styles.clearFilterButtonLarge}
+                />
+              )}
             </Card>
           ) : (
             filteredFoodItems.map((item) => (
-              <Card key={item.id} style={styles.foodCard}>
-                <TouchableOpacity onPress={() => handleFoodItemPress(item)} activeOpacity={0.9}>
-                  <View style={styles.cardContent}>
-                    {/* Food Image with Badges */}
-                    <View style={styles.imageContainer}>
-                      <Image source={{ uri: item.image }} style={styles.foodImage} />
-                      <View style={styles.badges}>
-                        {item.isPopular && (
-                          <View style={[styles.badge, styles.popularBadge]}>
-                            <Text style={styles.badgeText}>Popular</Text>
-                          </View>
-                        )}
-                        {item.isNew && (
-                          <View style={[styles.badge, styles.newBadge]}>
-                            <Text style={styles.badgeText}>New</Text>
-                          </View>
-                        )}
-                      </View>
-                      <TouchableOpacity style={styles.heartButton}>
-                        <Heart size={20} color="white" />
-                      </TouchableOpacity>
-                    </View>
-                    
-                    {/* Food Info */}
-                    <View style={styles.foodInfo}>
-                      <View style={styles.foodHeader}>
-                        <Text style={styles.foodTitle} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text style={styles.foodPrice}>${item.price.toFixed(2)}</Text>
-                      </View>
-                      
-                      <Text style={styles.foodDescription} numberOfLines={2}>
-                        {item.description}
-                      </Text>
-                      
-                      {/* Food Rating */}
-                      <View style={styles.foodRating}>
-                        <View style={styles.ratingStars}>
-                          {renderStars(item.foodRating)}
-                        </View>
-                        <Text style={styles.ratingText}>
-                          {item.foodRating} ({item.totalFoodReviews} reviews)
-                        </Text>
-                      </View>
-                      
-                      {/* Cook Info */}
-                      <TouchableOpacity 
-                        style={styles.cookSection}
-                        onPress={() => handleCookPress(item.cookId)}
-                      >
-                        <Image 
-                          source={{ uri: cooks.find(c => c.id === item.cookId)?.avatar || 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=100&h=100&fit=crop' }} 
-                          style={styles.cookAvatar} 
-                        />
-                        <View style={styles.cookInfo}>
-                          <View style={styles.cookNameRow}>
-                            <Text style={styles.cookName}>{item.cookName}</Text>
-                            {cooks.find(c => c.id === item.cookId)?.isVerified && (
-                              <Award size={14} color={theme.colors.primary} />
-                            )}
-                          </View>
-                          <View style={styles.cookRating}>
-                            <Star size={12} color={theme.colors.secondary} fill={theme.colors.secondary} />
-                            <Text style={styles.cookRatingText}>{item.cookRating}</Text>
-                            <Text style={styles.cookExperience}>
-                              • {cooks.find(c => c.id === item.cookId)?.yearsExperience}y exp
-                            </Text>
-                          </View>
-                        </View>
-                        <Text style={styles.viewProfile}>View →</Text>
-                      </TouchableOpacity>
-                      
-                      {/* Meta Info */}
-                      <View style={styles.metaInfo}>
-                        <View style={styles.metaItem}>
-                          <MapPin size={14} color={theme.colors.onSurfaceVariant} />
-                          <Text style={styles.metaText}>{item.distance}km</Text>
-                        </View>
-                        <View style={styles.metaItem}>
-                          <Clock size={14} color={theme.colors.onSurfaceVariant} />
-                          <Text style={styles.metaText}>{item.prepTime}min</Text>
-                        </View>
-                        <View style={styles.metaItem}>
-                          <Users size={14} color={theme.colors.onSurfaceVariant} />
-                          <Text style={styles.metaText}>{cooks.find(c => c.id === item.cookId)?.totalOrders || 0} orders</Text>
-                        </View>
-                      </View>
-                      
-                      {/* Tags */}
-                      <View style={styles.tags}>
-                        {item.tags.slice(0, 3).map((tag) => (
-                          <View key={tag} style={styles.tag}>
-                            <Text style={styles.tagText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </Card>
+              <FoodCard
+                key={item.id}
+                item={item}
+                cook={cooks.find(c => c.id === item.cookId)}
+                onPress={() => handleFoodItemPress(item)}
+                onCookPress={() => handleCookPress(item.cookId)}
+              />
             ))
           )}
         </View>
@@ -715,7 +723,7 @@ export default function HomeScreen() {
                   title="View Menu"
                   onPress={() => {
                     setShowCookProfile(false);
-                    // Filter by this cook
+                    setSelectedCookId(selectedCook.id);
                   }}
                   style={styles.actionButton}
                 />
@@ -928,6 +936,49 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cookFilterBanner: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  cookFilterCard: {
+    padding: theme.spacing.md,
+  },
+  cookFilterContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  cookFilterAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  cookFilterInfo: {
+    flex: 1,
+  },
+  cookFilterName: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+    marginBottom: theme.spacing.xs,
+  },
+  cookFilterRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  cookFilterRatingText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
+  },
+  clearFilterButton: {
+    padding: theme.spacing.sm,
+  },
+  clearFilterButtonLarge: {
+    marginTop: theme.spacing.md,
+    alignSelf: 'center',
+  },
   mealTypeContainer: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
@@ -1008,6 +1059,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: theme.colors.onSurface,
     marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   emptyStateText: {
     fontSize: 14,
@@ -1015,174 +1067,9 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurfaceVariant,
     textAlign: 'center',
   },
-  foodCard: {
-    padding: 0,
-    marginBottom: theme.spacing.lg,
-    overflow: 'hidden',
-  },
-  cardContent: {
-    gap: theme.spacing.md,
-  },
-  imageContainer: {
-    position: 'relative',
-  },
-  foodImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-  },
-  badges: {
-    position: 'absolute',
-    top: theme.spacing.md,
-    left: theme.spacing.md,
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  badge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  popularBadge: {
-    backgroundColor: theme.colors.secondary,
-  },
-  newBadge: {
-    backgroundColor: theme.colors.primary,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Bold',
-    color: 'white',
-  },
-  heartButton: {
-    position: 'absolute',
-    top: theme.spacing.md,
-    right: theme.spacing.md,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  foodInfo: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
-  },
-  foodHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  foodTitle: {
-    flex: 1,
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginRight: theme.spacing.md,
-  },
-  foodPrice: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.primary,
-  },
-  foodDescription: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
-  foodRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
   ratingStars: {
     flexDirection: 'row',
     gap: 2,
-  },
-  ratingText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  cookSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.md,
-  },
-  cookAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-  },
-  cookInfo: {
-    flex: 1,
-  },
-  cookNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.xs,
-  },
-  cookName: {
-    fontSize: 14,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-  },
-  cookRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  cookRatingText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  cookExperience: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-  },
-  viewProfile: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
-  },
-  metaInfo: {
-    flexDirection: 'row',
-    gap: theme.spacing.lg,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  metaText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-  },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  tag: {
-    backgroundColor: theme.colors.surfaceVariant,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-  },
-  tagText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurfaceVariant,
   },
   modalContainer: {
     flex: 1,
