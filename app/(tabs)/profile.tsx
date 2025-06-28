@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
-import { X, AlertTriangle, Clock, CheckCircle, MessageCircle } from 'lucide-react-native';
+import { X, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, MessageCircle } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ReportedIssue {
