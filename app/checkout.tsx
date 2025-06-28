@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, CreditCard, Clock, Check, CreditCard as Edit3, CheckCircle, Package } from 'lucide-react-native';
+import { ArrowLeft, MapPin, CreditCard, Clock, Check, CreditCard as Edit3, CircleCheck as CheckCircle, Package } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
