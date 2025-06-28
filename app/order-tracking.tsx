@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Package, Clock, CheckCircle, Truck, MapPin, Phone, MessageCircle } from 'lucide-react-native';
+import { ArrowLeft, Package, Clock, CircleCheck as CheckCircle, Truck, MapPin, Phone, MessageCircle } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { theme } from '@/constants/theme';
