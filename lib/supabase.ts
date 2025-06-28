@@ -43,6 +43,12 @@ const createMockClient = () => {
       getSession: () => Promise.resolve({ data: { session: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     },
+    // Real-time methods
+    channel: (name: string) => ({
+      on: () => ({ subscribe: () => {} }),
+      subscribe: () => {},
+    }),
+    removeAllChannels: () => {},
     from: () => ({
       select: () => Promise.resolve({ data: [], error: new Error('Supabase not configured') }),
       insert: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
@@ -50,6 +56,7 @@ const createMockClient = () => {
       delete: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
       single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
       eq: function() { return this; },
+      order: function() { return this; },
     }),
   };
 };
