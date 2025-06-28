@@ -3,32 +3,26 @@ import {
   View,
   Text,
   StyleSheet,
+  Modal,
   ScrollView,
   TouchableOpacity,
   Platform,
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { ArrowLeft, Crown, Check, Star, Zap, Shield } from 'lucide-react-native';
+import { X, Crown, Check, Star, Zap, Shield } from 'lucide-react-native';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 
-interface SubscriptionPlan {
-  id: string;
-  name: string;
-  price: number;
-  period: string;
-  originalPrice?: number;
-  popular?: boolean;
-  features: string[];
-  color: string;
-  icon: React.ReactNode;
+interface PaywallModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+const SUBSCRIPTION_PLANS = [
   {
     id: 'daily_plan',
     name: 'Daily Explorer',
@@ -81,8 +75,8 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   },
 ];
 
-export default function SubscriptionScreen() {
-  const { packages, purchasePackage, restorePurchases, isSubscribed } = useSubscription();
+export function PaywallModal({ visible, onClose, onSuccess }: PaywallModalProps) {
+  const { packages, purchasePackage, restorePurchases } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState('weekly_plan');
   const [loading, setLoading] = useState(false);
 
@@ -100,7 +94,13 @@ export default function SubscriptionScreen() {
             'Subscription Activated!',
             'Welcome to HomeFood Premium! You can now order from amazing home cooks.',
             [
-              { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
+              { 
+                text: 'Start Exploring', 
+                onPress: () => {
+                  onSuccess?.();
+                  onClose();
+                }
+              }
             ]
           );
         } else {
@@ -112,7 +112,13 @@ export default function SubscriptionScreen() {
           'Subscription Activated!',
           'Welcome to HomeFood Premium! You can now order from amazing home cooks.',
           [
-            { text: 'Start Exploring', onPress: () => router.replace('/(tabs)') }
+            { 
+              text: 'Start Exploring', 
+              onPress: () => {
+                onSuccess?.();
+                onClose();
+              }
+            }
           ]
         );
       }
@@ -129,9 +135,7 @@ export default function SubscriptionScreen() {
       const success = await restorePurchases();
       if (success) {
         Alert.alert('Purchases Restored', 'Your subscription has been restored successfully.');
-        if (isSubscribed) {
-          router.replace('/(tabs)');
-        }
+        onClose();
       } else {
         Alert.alert('No Purchases Found', 'No previous purchases were found to restore.');
       }
@@ -145,160 +149,153 @@ export default function SubscriptionScreen() {
   const selectedPlanData = SUBSCRIPTION_PLANS.find(plan => plan.id === selectedPlan);
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={[theme.colors.primary, theme.colors.primaryDark]}
-        style={styles.header}
-      >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <LinearGradient
+          colors={[theme.colors.primary, theme.colors.primaryDark]}
+          style={styles.header}
         >
-          <ArrowLeft size={24} color="white" />
-        </TouchableOpacity>
-        
-        <View style={styles.headerContent}>
-          <Crown size={48} color="white" />
-          <Text style={styles.headerTitle}>Unlock Premium</Text>
-          <Text style={styles.headerSubtitle}>
-            Get unlimited access to amazing homemade meals from talented local cooks
-          </Text>
-        </View>
-      </LinearGradient>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Benefits Section */}
-        <View style={styles.benefitsSection}>
-          <Text style={styles.sectionTitle}>Why Go Premium?</Text>
-          <View style={styles.benefits}>
-            {[
-              { icon: <Check size={20} color={theme.colors.success} />, text: 'Order from verified home cooks' },
-              { icon: <Check size={20} color={theme.colors.success} />, text: 'Fresh, homemade meals daily' },
-              { icon: <Check size={20} color={theme.colors.success} />, text: 'Support local food entrepreneurs' },
-              { icon: <Check size={20} color={theme.colors.success} />, text: 'Personalized meal recommendations' },
-            ].map((benefit, index) => (
-              <View key={index} style={styles.benefit}>
-                {benefit.icon}
-                <Text style={styles.benefitText}>{benefit.text}</Text>
-              </View>
-            ))}
+          <TouchableOpacity 
+            style={styles.closeButton}
+            onPress={onClose}
+          >
+            <X size={24} color="white" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerContent}>
+            <Crown size={48} color="white" />
+            <Text style={styles.headerTitle}>Unlock Premium</Text>
+            <Text style={styles.headerSubtitle}>
+              Get unlimited access to amazing homemade meals from talented local cooks
+            </Text>
           </View>
-        </View>
+        </LinearGradient>
 
-        {/* Plans Section */}
-        <View style={styles.plansSection}>
-          <Text style={styles.sectionTitle}>Choose Your Plan</Text>
-          <View style={styles.plans}>
-            {SUBSCRIPTION_PLANS.map((plan) => (
-              <TouchableOpacity
-                key={plan.id}
-                style={[
-                  styles.planCard,
-                  selectedPlan === plan.id && styles.planCardSelected,
-                ]}
-                onPress={() => setSelectedPlan(plan.id)}
-              >
-                <Card style={[
-                  styles.planCardInner,
-                  selectedPlan === plan.id && { borderColor: plan.color, borderWidth: 2 }
-                ]}>
-                  {plan.popular && (
-                    <View style={[styles.popularBadge, { backgroundColor: plan.color }]}>
-                      <Text style={styles.popularText}>Most Popular</Text>
-                    </View>
-                  )}
-                  
-                  <View style={[styles.planHeader, { backgroundColor: plan.color }]}>
-                    {plan.icon}
-                    <Text style={styles.planName}>{plan.name}</Text>
-                  </View>
-                  
-                  <View style={styles.planPricing}>
-                    <View style={styles.priceContainer}>
-                      <Text style={styles.price}>${plan.price}</Text>
-                      <Text style={styles.period}>/{plan.period}</Text>
-                    </View>
-                    {plan.originalPrice && (
-                      <View style={styles.savingsContainer}>
-                        <Text style={styles.originalPrice}>${plan.originalPrice}</Text>
-                        <Text style={styles.savings}>
-                          Save {Math.round((1 - plan.price / plan.originalPrice) * 100)}%
-                        </Text>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Benefits Section */}
+          <View style={styles.benefitsSection}>
+            <Text style={styles.sectionTitle}>Why Go Premium?</Text>
+            <View style={styles.benefits}>
+              {[
+                { icon: <Check size={20} color={theme.colors.success} />, text: 'Order from verified home cooks' },
+                { icon: <Check size={20} color={theme.colors.success} />, text: 'Fresh, homemade meals daily' },
+                { icon: <Check size={20} color={theme.colors.success} />, text: 'Support local food entrepreneurs' },
+                { icon: <Check size={20} color={theme.colors.success} />, text: 'Personalized meal recommendations' },
+              ].map((benefit, index) => (
+                <View key={index} style={styles.benefit}>
+                  {benefit.icon}
+                  <Text style={styles.benefitText}>{benefit.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Plans Section */}
+          <View style={styles.plansSection}>
+            <Text style={styles.sectionTitle}>Choose Your Plan</Text>
+            <View style={styles.plans}>
+              {SUBSCRIPTION_PLANS.map((plan) => (
+                <TouchableOpacity
+                  key={plan.id}
+                  style={[
+                    styles.planCard,
+                    selectedPlan === plan.id && styles.planCardSelected,
+                  ]}
+                  onPress={() => setSelectedPlan(plan.id)}
+                >
+                  <Card style={[
+                    styles.planCardInner,
+                    selectedPlan === plan.id && { borderColor: plan.color, borderWidth: 2 }
+                  ]}>
+                    {plan.popular && (
+                      <View style={[styles.popularBadge, { backgroundColor: plan.color }]}>
+                        <Text style={styles.popularText}>Most Popular</Text>
                       </View>
                     )}
-                  </View>
-                  
-                  <View style={styles.planFeatures}>
-                    {plan.features.map((feature, index) => (
-                      <View key={index} style={styles.feature}>
-                        <Check size={16} color={theme.colors.success} />
-                        <Text style={styles.featureText}>{feature}</Text>
+                    
+                    <View style={[styles.planHeader, { backgroundColor: plan.color }]}>
+                      {plan.icon}
+                      <Text style={styles.planName}>{plan.name}</Text>
+                    </View>
+                    
+                    <View style={styles.planPricing}>
+                      <View style={styles.priceContainer}>
+                        <Text style={styles.price}>${plan.price}</Text>
+                        <Text style={styles.period}>/{plan.period}</Text>
                       </View>
-                    ))}
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            ))}
+                      {plan.originalPrice && (
+                        <View style={styles.savingsContainer}>
+                          <Text style={styles.originalPrice}>${plan.originalPrice}</Text>
+                          <Text style={styles.savings}>
+                            Save {Math.round((1 - plan.price / plan.originalPrice) * 100)}%
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    
+                    <View style={styles.planFeatures}>
+                      {plan.features.map((feature, index) => (
+                        <View key={index} style={styles.feature}>
+                          <Check size={16} color={theme.colors.success} />
+                          <Text style={styles.featureText}>{feature}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
 
-        {/* Trust Section */}
-        <Card style={styles.trustSection}>
-          <View style={styles.trustHeader}>
-            <Shield size={24} color={theme.colors.primary} />
-            <Text style={styles.trustTitle}>Safe & Secure</Text>
-          </View>
-          <Text style={styles.trustText}>
-            Your payment is protected with bank-level security. Cancel anytime with no hidden fees.
-          </Text>
-        </Card>
-
-        {/* RevenueCat Integration Info */}
-        <Card style={styles.infoSection}>
-          <Text style={styles.infoTitle}>🚀 Production Ready</Text>
-          <Text style={styles.infoText}>
-            This app uses RevenueCat for subscription management, supporting:
-            {'\n\n'}• iOS App Store subscriptions
-            {'\n'}• Google Play billing
-            {'\n'}• Amazon Appstore
-            {'\n'}• Cross-platform receipt validation
-            {'\n'}• Real-time subscription status
-            {'\n'}• Analytics and insights
-          </Text>
-        </Card>
-      </ScrollView>
-
-      {/* Bottom Action */}
-      <View style={styles.bottomAction}>
-        <View style={styles.selectedPlanInfo}>
-          <Text style={styles.selectedPlanText}>
-            {selectedPlanData?.name} - ${selectedPlanData?.price}/{selectedPlanData?.period}
-          </Text>
-          {selectedPlanData?.originalPrice && (
-            <Text style={styles.selectedPlanSavings}>
-              Save ${(selectedPlanData.originalPrice - selectedPlanData.price).toFixed(2)}
+          {/* Trust Section */}
+          <Card style={styles.trustSection}>
+            <View style={styles.trustHeader}>
+              <Shield size={24} color={theme.colors.primary} />
+              <Text style={styles.trustTitle}>Safe & Secure</Text>
+            </View>
+            <Text style={styles.trustText}>
+              Your payment is protected with bank-level security. Cancel anytime with no hidden fees.
             </Text>
-          )}
+          </Card>
+        </ScrollView>
+
+        {/* Bottom Action */}
+        <View style={styles.bottomAction}>
+          <View style={styles.selectedPlanInfo}>
+            <Text style={styles.selectedPlanText}>
+              {selectedPlanData?.name} - ${selectedPlanData?.price}/{selectedPlanData?.period}
+            </Text>
+            {selectedPlanData?.originalPrice && (
+              <Text style={styles.selectedPlanSavings}>
+                Save ${(selectedPlanData.originalPrice - selectedPlanData.price).toFixed(2)}
+              </Text>
+            )}
+          </View>
+          
+          <Button
+            title={loading ? 'Processing...' : 'Start Free Trial'}
+            onPress={handleSubscribe}
+            disabled={loading}
+            size="large"
+            style={styles.subscribeButton}
+          />
+          
+          <TouchableOpacity onPress={handleRestore} style={styles.restoreButton}>
+            <Text style={styles.restoreText}>Restore Purchases</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.trialText}>
+            7-day free trial, then ${selectedPlanData?.price}/{selectedPlanData?.period}
+          </Text>
         </View>
-        
-        <Button
-          title={loading ? 'Processing...' : 'Start Free Trial'}
-          onPress={handleSubscribe}
-          disabled={loading}
-          size="large"
-          style={styles.subscribeButton}
-        />
-        
-        <TouchableOpacity onPress={handleRestore} style={styles.restoreButton}>
-          <Text style={styles.restoreText}>Restore Purchases</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.trialText}>
-          7-day free trial, then ${selectedPlanData?.price}/{selectedPlanData?.period}
-        </Text>
       </View>
-    </View>
+    </Modal>
   );
 }
 
@@ -312,13 +309,14 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xxl,
     paddingHorizontal: theme.spacing.lg,
   },
-  backButton: {
+  closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-end',
     marginBottom: theme.spacing.lg,
   },
   headerContent: {
@@ -464,7 +462,7 @@ const styles = StyleSheet.create({
   },
   trustSection: {
     marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   trustHeader: {
     flexDirection: 'row',
@@ -478,23 +476,6 @@ const styles = StyleSheet.create({
     color: theme.colors.onSurface,
   },
   trustText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
-  infoSection: {
-    marginHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.surfaceVariant,
-  },
-  infoTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-    marginBottom: theme.spacing.md,
-  },
-  infoText: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
