@@ -15,8 +15,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: RegisterData) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (userData: Partial<User>) => Promise<void>;
 }
@@ -54,6 +54,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth state changed:', event);
+      
       if (session?.user) {
         await loadUserProfile(session.user);
       } else {
@@ -69,6 +71,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
+      console.log('👤 Loading profile for user:', supabaseUser.email);
+      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -76,7 +80,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .single();
 
       if (error) {
-        console.error('Error loading profile:', error);
+        console.error('❌ Error loading profile:', error);
+        
+        // If profile doesn't exist, create it
+        if (error.code === 'PGRST116') {
+          console.log('📝 Profile not found, creating new profile...');
+          await createUserProfile(supabaseUser);
+          return;
+        }
         return;
       }
 
@@ -90,118 +101,71 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           address: profile.address || undefined,
           profileImage: profile.profile_image || undefined,
         };
+        console.log('✅ Profile loaded successfully');
         setUser(user);
       }
     } catch (err) {
-      console.error('Error loading user profile:', err);
+      console.error('❌ Exception loading user profile:', err);
     }
   };
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const createUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: supabaseUser.user_metadata?.name || supabaseUser.email!.split('@')[0],
+          phone: supabaseUser.user_metadata?.phone || null,
+          is_cook: supabaseUser.user_metadata?.is_cook || false,
+          profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        });
+
+      if (error) {
+        console.error('❌ Error creating profile:', error);
+        return;
+      }
+
+      console.log('✅ Profile created successfully');
+      await loadUserProfile(supabaseUser);
+    } catch (err) {
+      console.error('❌ Exception creating profile:', err);
+    }
+  };
+
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       console.log('🔑 Attempting login for:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim().toLowerCase(),
         password,
       });
 
       if (error) {
         console.error('❌ Login error:', error.message);
-        return false;
+        return { success: false, error: error.message };
       }
 
       if (data.user) {
         console.log('✅ Login successful for user:', data.user.email);
-        await loadUserProfile(data.user);
-        return true;
+        return { success: true };
       }
       
-      return false;
-    } catch (error) {
+      return { success: false, error: 'Login failed - no user returned' };
+    } catch (error: any) {
       console.error('❌ Login exception:', error);
-      return false;
+      return { success: false, error: error.message || 'An unexpected error occurred' };
     }
   };
 
-  const register = async (userData: RegisterData): Promise<boolean> => {
-    try {
-      // Check if user already exists by trying to sign in first
-      const { data: existingSession } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password: userData.password,
-      });
-
-      if (existingSession.user) {
-        console.log('✅ User already exists, signing in instead');
-        await loadUserProfile(existingSession.user);
-        return true;
-      }
-    } catch (error) {
-      // User doesn't exist, continue with registration
-      console.log('User does not exist, proceeding with registration');
-    }
-
+  const register = async (userData: RegisterData): Promise<{ success: boolean; error?: string }> => {
     try {
       console.log('📝 Attempting registration for:', userData.email);
-      const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
-            name: userData.name,
-            phone: userData.phone,
-            is_cook: userData.isCook,
-          },
-        },
-      });
-
-      if (error && !error.message.includes('already registered')) {
-        console.error('❌ Registration error:', error.message);
-        return false;
-      }
-
-      if (data.user || error?.message.includes('already registered')) {
-        // Handle both new user and existing user cases
-        const user = data.user;
-        if (user) {
-          console.log('✅ Registration successful for user:', user.email);
-          // Update profile with additional info
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: user.id,
-              email: userData.email,
-              name: userData.name,
-              phone: userData.phone,
-              is_cook: userData.isCook,
-              profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-            });
-
-          if (profileError) {
-            console.error('❌ Profile update error:', profileError.message);
-          }
-
-          await loadUserProfile(user);
-        } else {
-          // User already exists, try to sign in
-          console.log('User already exists, attempting sign in...');
-          return await login(userData.email, userData.password);
-        }
-        return true;
-      }
       
-      return true;
-    } catch (error) {
-      console.error('❌ Registration exception:', error);
-      return false;
-    }
-  };
-
-  const register_old = async (userData: RegisterData): Promise<boolean> => {
-    try {
-      console.log('📝 Attempting registration for:', userData.email);
       const { data, error } = await supabase.auth.signUp({
-        email: userData.email,
+        email: userData.email.trim().toLowerCase(),
         password: userData.password,
         options: {
           data: {
@@ -214,66 +178,81 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('❌ Registration error:', error.message);
-        return false;
+        
+        // Handle specific error cases
+        if (error.message.includes('already registered')) {
+          return { success: false, error: 'This email is already registered. Please try logging in instead.' };
+        }
+        
+        return { success: false, error: error.message };
       }
 
       if (data.user) {
         console.log('✅ Registration successful for user:', data.user.email);
-        // Update profile with additional info
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            phone: userData.phone,
-            is_cook: userData.isCook,
-            profile_image: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-          })
-          .eq('id', data.user.id);
-
-        if (profileError) {
-          console.error('❌ Profile update error:', profileError.message);
+        
+        // Check if email confirmation is required
+        if (!data.session) {
+          return { 
+            success: true, 
+            error: 'Please check your email for a confirmation link before logging in.' 
+          };
         }
-
-        await loadUserProfile(data.user);
-        return true;
+        
+        return { success: true };
       }
       
-      return true;
-    } catch (error) {
+      return { success: false, error: 'Registration failed - no user returned' };
+    } catch (error: any) {
       console.error('❌ Registration exception:', error);
-      return false;
+      return { success: false, error: error.message || 'An unexpected error occurred' };
     }
   };
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      console.log('🚪 Logging out user');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('❌ Logout error:', error);
+      } else {
+        console.log('✅ Logout successful');
+      }
     } catch (error) {
-      console.error('Logout error:', error);
-      // Even if AsyncStorage fails, clear the user state
+      console.error('❌ Logout exception:', error);
+    } finally {
       setUser(null);
     }
   };
 
   const updateProfile = async (userData: Partial<User>) => {
     try {
-      if (user) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: userData.name,
-            phone: userData.phone,
-            address: userData.address,
-            profile_image: userData.profileImage,
-          })
-          .eq('id', user.id);
-
-        if (!error) {
-          const updatedUser = { ...user, ...userData };
-          setUser(updatedUser);
-        }
+      if (!user) {
+        console.error('❌ No user to update');
+        return;
       }
+
+      console.log('🔄 Updating profile for user:', user.id);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: userData.name,
+          phone: userData.phone,
+          address: userData.address,
+          profile_image: userData.profileImage,
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('❌ Profile update error:', error);
+        return;
+      }
+
+      console.log('✅ Profile updated successfully');
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
     } catch (error) {
-      console.error('Update profile error:', error);
+      console.error('❌ Update profile exception:', error);
     }
   };
 

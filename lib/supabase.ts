@@ -1,23 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "https://mock.supabase.co";
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "mock-key";
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
 // Enhanced validation with detailed logging
 const isValidUrl = (url: string | undefined): boolean => {
-  console.log('Validating Supabase URL:', url);
+  console.log('🔍 Validating Supabase URL:', url ? url.substring(0, 30) + '...' : 'undefined');
   if (!url) {
     console.log('❌ No Supabase URL provided');
     return false;
   }
-  if (url.includes('your_supabase_project_url_here')) {
+  if (url.includes('your_supabase_project_url_here') || url.includes('mock')) {
     console.log('❌ Placeholder Supabase URL detected');
     return false;
   }
   try {
     new URL(url);
-    console.log('✅ Valid Supabase URL');
+    console.log('✅ Valid Supabase URL format');
     return true;
   } catch (error) {
     console.log('❌ Invalid URL format:', error);
@@ -26,19 +26,25 @@ const isValidUrl = (url: string | undefined): boolean => {
 };
 
 const isValidKey = (key: string | undefined): boolean => {
-  console.log('Validating Supabase key length:', key?.length);
-  const isValid = !!(key && key !== 'your_supabase_anon_key_here' && key.length > 10);
-  console.log(isValid ? '✅ Valid Supabase key' : '❌ Invalid Supabase key');
+  console.log('🔍 Validating Supabase key length:', key?.length || 0);
+  const isValid = !!(key && key !== 'your_supabase_anon_key_here' && key.length > 10 && !key.includes('mock'));
+  console.log(isValid ? '✅ Valid Supabase key format' : '❌ Invalid Supabase key format');
   return isValid;
 };
 
 // Create a mock client for development when Supabase is not configured
 const createMockClient = () => {
-  console.log('🔧 Using mock Supabase client - authentication will fail');
+  console.warn('🔧 Using mock Supabase client - authentication will fail');
   return {
     auth: {
-      signInWithPassword: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
-      signUp: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+      signInWithPassword: () => Promise.resolve({ 
+        data: { user: null, session: null }, 
+        error: { message: 'Supabase not configured - using mock client', code: 'mock_error' } 
+      }),
+      signUp: () => Promise.resolve({ 
+        data: { user: null, session: null }, 
+        error: { message: 'Supabase not configured - using mock client', code: 'mock_error' } 
+      }),
       signOut: () => Promise.resolve({ error: null }),
       getSession: () => Promise.resolve({ data: { session: null }, error: null }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
@@ -49,12 +55,15 @@ const createMockClient = () => {
       subscribe: () => {},
     }),
     removeAllChannels: () => {},
+    getChannels: () => [],
+    removeChannel: () => {},
     from: () => ({
-      select: () => Promise.resolve({ data: [], error: new Error('Supabase not configured') }),
-      insert: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
-      update: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
-      delete: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
-      single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+      select: () => Promise.resolve({ data: [], error: { message: 'Supabase not configured', code: 'mock_error' } }),
+      insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
+      update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
+      upsert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
+      delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
+      single: function() { return this; },
       eq: function() { return this; },
       order: function() { return this; },
     }),
@@ -62,47 +71,52 @@ const createMockClient = () => {
 };
 
 export const supabase = (() => {
-  console.log('🔧 Initializing Supabase client...');
-  console.log('Environment check:', {
+  console.log('🚀 Initializing Supabase client...');
+  console.log('📋 Environment check:', {
     hasUrl: !!supabaseUrl,
     hasKey: !!supabaseAnonKey,
-    urlValid: isValidUrl(supabaseUrl),
-    keyValid: isValidKey(supabaseAnonKey)
+    urlLength: supabaseUrl?.length || 0,
+    keyLength: supabaseAnonKey?.length || 0,
   });
 
   if (!isValidUrl(supabaseUrl) || !isValidKey(supabaseAnonKey)) {
-    console.warn(
-      '❌ Supabase configuration is missing or invalid. Please check your environment variables.\n' +
-      `URL: ${supabaseUrl}\n` +
-      `Key length: ${supabaseAnonKey?.length}\n` +
+    console.error(
+      '❌ Supabase configuration is missing or invalid.\n' +
+      'Please ensure your .env file contains valid EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY\n' +
       'The app will use mock data until properly configured.'
     );
     return createMockClient() as any;
   }
 
-  console.log('✅ Creating real Supabase client');
+  console.log('✅ Creating real Supabase client with valid configuration');
   
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storage: AsyncStorage,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false,
-    },
-  });
-  
-  // Add the removeAllChannels method to prevent errors
-  if (!client.removeAllChannels) {
-    client.removeAllChannels = () => {
-      console.log('Mock removeAllChannels called');
-      const channels = client.getChannels();
-      channels.forEach(channel => {
-        client.removeChannel(channel);
-      });
-    };
+  try {
+    const client = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storage: AsyncStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    });
+    
+    // Add the removeAllChannels method to prevent errors
+    if (!client.removeAllChannels) {
+      client.removeAllChannels = () => {
+        console.log('🧹 Removing all Supabase channels');
+        const channels = client.getChannels();
+        channels.forEach(channel => {
+          client.removeChannel(channel);
+        });
+      };
+    }
+    
+    console.log('🎉 Supabase client initialized successfully');
+    return client;
+  } catch (error) {
+    console.error('❌ Failed to create Supabase client:', error);
+    return createMockClient() as any;
   }
-  
-  return client;
 })();
 
 // Database types
