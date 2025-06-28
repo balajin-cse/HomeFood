@@ -47,11 +47,32 @@ export default function CheckoutScreen() {
   const total = subtotal + deliveryFee + serviceFee;
 
   const handlePlaceOrder = () => {
+    // Generate tracking number and order details
+    const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
+    const orderId = Date.now().toString();
+    
     Alert.alert(
-      'Order Placed!',
-      'Your order has been placed successfully. You will receive a confirmation shortly.',
+      'Order Placed Successfully!',
+      `Your order has been placed and confirmed.\n\nTracking Number: ${trackingNumber}\n\nYou can track your order progress in real-time.`,
       [
-        { text: 'Track Order', onPress: () => router.replace('/(tabs)/orders') }
+        { 
+          text: 'Track Order', 
+          onPress: () => router.push({
+            pathname: '/order-tracking',
+            params: {
+              orderId,
+              trackingNumber,
+              foodTitle: orderItems[0].name,
+              cookName: 'Maria Rodriguez',
+              quantity: orderItems[0].quantity.toString(),
+              totalPrice: total.toString(),
+            }
+          })
+        },
+        { 
+          text: 'View Orders', 
+          onPress: () => router.replace('/(tabs)/orders') 
+        }
       ]
     );
   };

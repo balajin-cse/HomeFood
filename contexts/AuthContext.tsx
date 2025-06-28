@@ -28,6 +28,37 @@ interface RegisterData {
   isCook: boolean;
 }
 
+// Mock user database
+const MOCK_USERS = [
+  {
+    id: '1',
+    email: 'bala@example.com',
+    password: 'pass123',
+    name: 'Bala',
+    phone: '+1234567890',
+    isCook: false,
+    address: '123 Main Street, San Francisco, CA 94102',
+  },
+  {
+    id: '2',
+    email: 'maria@example.com',
+    password: 'password123',
+    name: 'Maria Rodriguez',
+    phone: '+1234567891',
+    isCook: true,
+    address: '456 North Beach, San Francisco, CA 94133',
+  },
+  {
+    id: '3',
+    email: 'sarah@example.com',
+    password: 'password123',
+    name: 'Sarah Johnson',
+    phone: '+1234567892',
+    isCook: true,
+    address: '789 Mission District, San Francisco, CA 94110',
+  },
+];
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -61,18 +92,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call
-      const mockUser: User = {
-        id: '1',
-        email,
-        name: 'John Doe',
-        phone: '+1234567890',
-        isCook: false,
-      };
+      // Find user in mock database
+      const foundUser = MOCK_USERS.find(
+        u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+      );
+
+      if (foundUser) {
+        const { password: _, ...userWithoutPassword } = foundUser;
+        const user: User = userWithoutPassword;
+        
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
+        return true;
+      }
       
-      await AsyncStorage.setItem('user', JSON.stringify(mockUser));
-      setUser(mockUser);
-      return true;
+      return false;
     } catch (error) {
       console.error('Login error:', error);
       return false;
@@ -81,7 +115,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
-      // Simulate API call
+      // Check if user already exists
+      const existingUser = MOCK_USERS.find(
+        u => u.email.toLowerCase() === userData.email.toLowerCase()
+      );
+
+      if (existingUser) {
+        return false; // User already exists
+      }
+
+      // Create new user
       const newUser: User = {
         id: Date.now().toString(),
         email: userData.email,

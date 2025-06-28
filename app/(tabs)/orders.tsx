@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Card, Chip, Button } from 'react-native-paper';
+import { router } from 'expo-router';
 import { format } from 'date-fns';
 import { theme } from '@/constants/theme';
 
 interface Order {
   id: string;
+  trackingNumber: string;
   foodTitle: string;
   cookName: string;
   quantity: number;
@@ -31,29 +33,43 @@ export default function OrdersScreen() {
   }, []);
 
   const loadOrders = () => {
-    // Mock data - replace with actual API call
+    // Enhanced mock data with tracking numbers
     const mockOrders: Order[] = [
       {
         id: '1',
+        trackingNumber: 'HF12345678',
         foodTitle: 'Homemade Pasta Carbonara',
         cookName: 'Maria Rodriguez',
         quantity: 2,
-        totalPrice: 25.98,
+        totalPrice: 33.98,
         status: 'preparing',
         orderDate: new Date(),
         deliveryTime: '12:30 PM - 1:00 PM',
-        address: '123 Main St, City',
+        address: '123 Main St, San Francisco, CA',
       },
       {
         id: '2',
+        trackingNumber: 'HF87654321',
         foodTitle: 'Fresh Avocado Toast',
         cookName: 'Sarah Johnson',
         quantity: 1,
-        totalPrice: 8.50,
+        totalPrice: 15.49,
         status: 'delivered',
         orderDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
         deliveryTime: '8:00 AM - 8:30 AM',
-        address: '123 Main St, City',
+        address: '123 Main St, San Francisco, CA',
+      },
+      {
+        id: '3',
+        trackingNumber: 'HF11223344',
+        foodTitle: 'Pan-Seared Salmon',
+        cookName: 'David Chen',
+        quantity: 1,
+        totalPrice: 28.49,
+        status: 'delivered',
+        orderDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        deliveryTime: '6:00 PM - 6:30 PM',
+        address: '123 Main St, San Francisco, CA',
       },
     ];
     setOrders(mockOrders);
@@ -96,6 +112,20 @@ export default function OrdersScreen() {
     }
   };
 
+  const handleTrackOrder = (order: Order) => {
+    router.push({
+      pathname: '/order-tracking',
+      params: {
+        orderId: order.id,
+        trackingNumber: order.trackingNumber,
+        foodTitle: order.foodTitle,
+        cookName: order.cookName,
+        quantity: order.quantity.toString(),
+        totalPrice: order.totalPrice.toString(),
+      }
+    });
+  };
+
   const activeOrders = orders.filter(order => 
     ['pending', 'confirmed', 'preparing', 'ready'].includes(order.status)
   );
@@ -110,6 +140,7 @@ export default function OrdersScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Orders</Text>
+        <Text style={styles.headerSubtitle}>Track and manage your orders</Text>
       </View>
 
       <View style={styles.tabs}>
@@ -148,6 +179,7 @@ export default function OrdersScreen() {
                 <View style={styles.orderInfo}>
                   <Text style={styles.orderTitle}>{order.foodTitle}</Text>
                   <Text style={styles.cookName}>by {order.cookName}</Text>
+                  <Text style={styles.trackingNumber}>#{order.trackingNumber}</Text>
                 </View>
                 <Chip
                   style={[styles.statusChip, { backgroundColor: getStatusColor(order.status) }]}
@@ -169,7 +201,7 @@ export default function OrdersScreen() {
                 <View style={styles.orderMeta}>
                   <Text style={styles.metaLabel}>Order Date:</Text>
                   <Text style={styles.metaValue}>
-                    {format(order.orderDate, 'MMM dd, yyyy')}
+                    {format(order.orderDate, 'MMM dd, yyyy • h:mm a')}
                   </Text>
                 </View>
                 <View style={styles.orderMeta}>
@@ -182,45 +214,45 @@ export default function OrdersScreen() {
                 </View>
               </View>
 
-              {selectedTab === 'active' && (
-                <View style={styles.orderActions}>
-                  {order.status === 'pending' && (
+              <View style={styles.orderActions}>
+                {selectedTab === 'active' && (
+                  <>
                     <Button
-                      mode="outlined"
-                      onPress={() => {/* Handle cancel */}}
+                      mode="contained"
+                      onPress={() => handleTrackOrder(order)}
                       style={styles.actionButton}
                     >
-                      Cancel Order
+                      Track Order
                     </Button>
-                  )}
-                  <Button
-                    mode="contained"
-                    onPress={() => {/* Handle contact cook */}}
-                    style={styles.actionButton}
-                  >
-                    Contact Cook
-                  </Button>
-                </View>
-              )}
+                    <Button
+                      mode="outlined"
+                      onPress={() => {/* Handle contact cook */}}
+                      style={styles.actionButton}
+                    >
+                      Contact Cook
+                    </Button>
+                  </>
+                )}
 
-              {selectedTab === 'history' && order.status === 'delivered' && (
-                <View style={styles.orderActions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {/* Handle reorder */}}
-                    style={styles.actionButton}
-                  >
-                    Order Again
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={() => {/* Handle review */}}
-                    style={styles.actionButton}
-                  >
-                    Write Review
-                  </Button>
-                </View>
-              )}
+                {selectedTab === 'history' && order.status === 'delivered' && (
+                  <>
+                    <Button
+                      mode="outlined"
+                      onPress={() => {/* Handle reorder */}}
+                      style={styles.actionButton}
+                    >
+                      Order Again
+                    </Button>
+                    <Button
+                      mode="contained"
+                      onPress={() => {/* Handle review */}}
+                      style={styles.actionButton}
+                    >
+                      Write Review
+                    </Button>
+                  </>
+                )}
+              </View>
             </Card>
           ))
         )}
@@ -244,6 +276,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     fontFamily: 'Inter-Bold',
+    marginBottom: 5,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: 'white',
+    opacity: 0.9,
+    fontFamily: 'Inter-Regular',
   },
   tabs: {
     flexDirection: 'row',
@@ -311,6 +350,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.primary,
     fontFamily: 'Inter-Medium',
+    marginBottom: 5,
+  },
+  trackingNumber: {
+    fontSize: 12,
+    color: theme.colors.onSurfaceVariant,
+    fontFamily: 'Inter-Regular',
   },
   statusChip: {
     marginLeft: 10,
@@ -347,9 +392,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: theme.colors.surface,
+    gap: 10,
   },
   actionButton: {
     flex: 1,
-    marginHorizontal: 5,
   },
 });

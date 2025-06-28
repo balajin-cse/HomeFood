@@ -41,6 +41,7 @@ export default function RootLayout() {
             <Stack.Screen name="food-detail" options={{ headerShown: false }} />
             <Stack.Screen name="checkout" options={{ headerShown: false }} />
             <Stack.Screen name="subscription" options={{ headerShown: false }} />
+            <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
             <Stack.Screen name="cook-registration" options={{ headerShown: false }} />
             <Stack.Screen name="delivery-address" options={{ headerShown: false }} />
             <Stack.Screen name="edit-profile" options={{ headerShown: false }} />
