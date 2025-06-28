@@ -93,6 +93,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('👤 Loading profile for user:', supabaseUser.email);
       
+      // Wait a moment for profile creation trigger to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -102,14 +105,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (error) {
         console.error('❌ Error loading profile:', error.message);
         
-        // If profile doesn't exist, create it
+        // If profile doesn't exist, try to create it manually
         if (error.code === 'PGRST116') {
           console.log('📝 Profile not found, creating new profile...');
           await createUserProfile(supabaseUser);
           return;
         }
         
-        // For other errors, still try to create a basic user object
+        // For other errors, create a fallback user object
         console.log('⚠️ Using fallback user data');
         const fallbackUser: User = {
           id: supabaseUser.id,
@@ -217,7 +220,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('🧪 Creating test users via registration...');
       
       // Create customer test user
-      console.log('📝 Creating customer user...');
+      console.log('📝 Creating customer user: bala@example.com');
       const customerResult = await supabase.auth.signUp({
         email: 'bala@example.com',
         password: 'pass123',
@@ -237,7 +240,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       // Create cook test user
-      console.log('📝 Creating cook user...');
+      console.log('📝 Creating cook user: ck-cookname@homefood.app');
       const cookResult = await supabase.auth.signUp({
         email: 'ck-cookname@homefood.app',
         password: 'cookpass',
@@ -256,13 +259,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log('✅ Cook test user handled');
       }
 
-      // If both users already exist, that's fine
-      if ((customerResult.error?.message.includes('already registered') || customerResult.data.user) &&
-          (cookResult.error?.message.includes('already registered') || cookResult.data.user)) {
-        return { success: true };
-      }
-
-      // If we got here and there were no errors, the users were created
       return { success: true };
     } catch (error: any) {
       console.error('❌ Error creating test users:', error);
@@ -292,7 +288,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.log('🔄 Retrying login after test user creation...');
             
             // Wait a moment for the database to sync
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
             const retryResult = await supabase.auth.signInWithPassword({
               email: email.trim().toLowerCase(),
@@ -300,11 +296,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
 
             if (retryResult.error) {
-              let userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
-              if (retryResult.error.message.includes('Email not confirmed')) {
-                userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
-              }
-              return { success: false, error: userFriendlyError };
+              return { success: false, error: 'Invalid email or password. Please check your credentials and try again.' };
             }
 
             if (retryResult.data.user) {
@@ -315,10 +307,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         
         // Provide user-friendly error messages
-        let userFriendlyError = error.message;
-        if (error.message.includes('Invalid login credentials')) {
-          userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
-        } else if (error.message.includes('Email not confirmed')) {
+        let userFriendlyError = 'Invalid email or password. Please check your credentials and try again.';
+        if (error.message.includes('Email not confirmed')) {
           userFriendlyError = 'Please check your email and click the confirmation link before logging in.';
         } else if (error.message.includes('Supabase not configured')) {
           userFriendlyError = 'The app is not properly configured. Please check your environment variables.';

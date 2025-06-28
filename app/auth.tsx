@@ -101,7 +101,7 @@ export default function AuthScreen() {
       if (result.success) {
         Alert.alert(
           'Test Users Created!',
-          'Demo users have been created. You can now log in with the test credentials.',
+          'Demo users have been created. You can now log in with the test credentials below.',
           [{ text: 'OK' }]
         );
       } else {
