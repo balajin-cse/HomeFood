@@ -68,7 +68,18 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     return () => {
       // Cleanup subscriptions when component unmounts
-      supabase.removeAllChannels();
+      try {
+        if (typeof supabase.removeAllChannels === 'function') {
+          supabase.removeAllChannels();
+        } else if (typeof supabase.getChannels === 'function') {
+          const channels = supabase.getChannels();
+          channels.forEach(channel => {
+            supabase.removeChannel(channel);
+          });
+        }
+      } catch (error) {
+        console.error('Error cleaning up Supabase channels:', error);
+      }
     };
   }, [user]);
 

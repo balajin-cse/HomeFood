@@ -40,7 +40,7 @@ const createMockClient = () => {
   const MOCK_USERS = [
     {
       id: 'user-bala-123',
-      email: 'bala@homefood.com',
+      email: 'bala@example.com',
       password: 'pass123',
       user_metadata: {
         name: 'Bala',
@@ -50,7 +50,7 @@ const createMockClient = () => {
     },
     {
       id: 'cook-123',
-      email: 'ck-cookname@homefood.com',
+      email: 'ck-cookname@homefood.app',
       password: 'cookpass',
       user_metadata: {
         name: 'Cook Name',

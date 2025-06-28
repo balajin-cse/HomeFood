@@ -69,7 +69,7 @@ export default function AuthScreen() {
 
   const fillCookCredentials = () => {
     setFormData({
-      email: 'ck-maria@homefood.app',
+      email: 'ck-cookname@homefood.com',
       password: 'cookpass',
       name: '',
       phone: '',
@@ -79,7 +79,7 @@ export default function AuthScreen() {
 
   const fillUserCredentials = () => {
     setFormData({
-      email: 'bala@homefood.com',
+      email: 'bala@example.com',
       password: 'pass123',
       name: '',
       phone: '',

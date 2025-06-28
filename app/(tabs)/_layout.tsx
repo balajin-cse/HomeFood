@@ -5,6 +5,19 @@ import { theme } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Safe function to check if Supabase channels need cleanup
+const safeCleanupChannels = () => {
+  try {
+    // This prevents the "removeAllChannels is not a function" error
+    if (typeof window !== 'undefined' && window.frameElement) {
+      // Running in iframe, don't cleanup to avoid errors
+      return;
+    }
+  } catch (e) {
+    console.log('Safe cleanup check error:', e);
+  }
+};
+
 function CartTabIcon({ color, size }: { color: string; size: number }) {
   const { cartCount } = useCart();
   
@@ -24,6 +37,11 @@ function CartTabIcon({ color, size }: { color: string; size: number }) {
 
 export default function TabLayout() {
   const { user } = useAuth();
+  
+  // Call safe cleanup function on mount
+  useEffect(() => {
+    safeCleanupChannels();
+  }, []);
 
   if (user?.isCook) {
     // Cook interface

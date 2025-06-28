@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "https://mock.supabase.co";
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "mock-key";
 
 // Enhanced validation with detailed logging
 const isValidUrl = (url: string | undefined): boolean => {
@@ -81,7 +81,8 @@ export const supabase = (() => {
   }
 
   console.log('✅ Creating real Supabase client');
-  return createClient(supabaseUrl!, supabaseAnonKey!, {
+  
+  const client = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       storage: AsyncStorage,
       autoRefreshToken: true,
@@ -89,6 +90,19 @@ export const supabase = (() => {
       detectSessionInUrl: false,
     },
   });
+  
+  // Add the removeAllChannels method to prevent errors
+  if (!client.removeAllChannels) {
+    client.removeAllChannels = () => {
+      console.log('Mock removeAllChannels called');
+      const channels = client.getChannels();
+      channels.forEach(channel => {
+        client.removeChannel(channel);
+      });
+    };
+  }
+  
+  return client;
 })();
 
 // Database types
