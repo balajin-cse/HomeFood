@@ -294,7 +294,7 @@ export default function SubscriptionScreen() {
         <Button
           title={loading ? 'Processing...' : isSubscribed ? 'Already Subscribed' : 'Start Free Trial'}
           onPress={handleSubscribe}
-          disabled={loading}
+          disabled={loading || isSubscribed}
           size="large"
           style={styles.subscribeButton}
         />
