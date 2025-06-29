@@ -32,7 +32,11 @@ class OpenStreetMapService {
     try {
       const url = `${this.baseUrl}/search?format=json&q=${encodeURIComponent(address)}&limit=5&addressdetails=1`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -59,7 +63,11 @@ class OpenStreetMapService {
     try {
       const url = `${this.baseUrl}/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -97,7 +105,11 @@ class OpenStreetMapService {
       const bbox = this.calculateBoundingBox(latitude, longitude, radius);
       const url = `${this.baseUrl}/search?format=json&q=${encodeURIComponent(query)}&viewbox=${bbox}&bounded=1&limit=10&addressdetails=1`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -132,7 +144,11 @@ class OpenStreetMapService {
       // Using OSRM (Open Source Routing Machine) for routing
       const url = `https://router.project-osrm.org/route/v1/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?overview=full&geometries=geojson`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
