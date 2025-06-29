@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Truck, MapPin, Phone, MessageCircle, CheckCircle, Clock, Navigation, Package } from 'lucide-react-native';
+import { Truck, MapPin, Phone, MessageCircle, CircleCheck as CheckCircle, Clock, Navigation, Package } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
