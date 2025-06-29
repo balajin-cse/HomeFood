@@ -12,6 +12,8 @@ import { router } from 'expo-router';
 import { ArrowLeft, Clock, Star, RotateCcw } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
 import { format } from 'date-fns';
 
@@ -28,50 +30,22 @@ interface OrderHistoryItem {
 }
 
 export default function OrderHistoryScreen() {
-  const [orders] = useState<OrderHistoryItem[]>([
-    {
-      id: '1',
-      foodTitle: 'Homemade Pasta Carbonara',
-      cookName: 'Maria Rodriguez',
-      quantity: 2,
-      totalPrice: 33.98,
-      status: 'delivered',
-      orderDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      rating: 5,
-      image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '2',
-      foodTitle: 'Fresh Avocado Toast',
-      cookName: 'Sarah Johnson',
-      quantity: 1,
-      totalPrice: 12.50,
-      status: 'delivered',
-      orderDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      rating: 4,
-      image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '3',
-      foodTitle: 'Thai Green Curry',
-      cookName: 'Siriporn Nakamura',
-      quantity: 1,
-      totalPrice: 17.50,
-      status: 'delivered',
-      orderDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      image: 'https://images.pexels.com/photos/2347311/pexels-photo-2347311.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-    {
-      id: '4',
-      foodTitle: 'BBQ Pulled Pork Sandwich',
-      cookName: 'Jake Williams',
-      quantity: 2,
-      totalPrice: 27.98,
-      status: 'cancelled',
-      orderDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-      image: 'https://images.pexels.com/photos/1633525/pexels-photo-1633525.jpeg?auto=compress&cs=tinysrgb&w=400',
-    },
-  ]);
+  const { user } = useAuth();
+  const { orders, refreshOrders, refreshing } = useOrders();
+  
+  // Filter to get only completed or cancelled orders
+  const completedOrders = orders
+    .filter(order => ['delivered', 'cancelled'].includes(order.status))
+    .map(order => ({
+      id: order.orderId,
+      foodTitle: order.items[0]?.title || 'Order',
+      cookName: order.cookName,
+      quantity: order.quantity,
+      totalPrice: order.totalPrice,
+      status: order.status as 'delivered' | 'cancelled',
+      orderDate: new Date(order.orderDate),
+      image: order.items[0]?.image || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+    }));
 
   const getStatusColor = (status: OrderHistoryItem['status']) => {
     switch (status) {
@@ -113,13 +87,19 @@ export default function OrderHistoryScreen() {
           <Clock size={32} color="white" />
           <Text style={styles.headerTitle}>Order History</Text>
           <Text style={styles.headerSubtitle}>
-            View your past orders and reorder favorites
+            View {completedOrders.length} past orders
           </Text>
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {orders.length === 0 ? (
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />
+        }
+      >
+        {completedOrders.length === 0 ? (
           <Card style={styles.emptyState}>
             <Clock size={48} color={theme.colors.onSurfaceVariant} />
             <Text style={styles.emptyTitle}>No Order History</Text>
@@ -129,8 +109,8 @@ export default function OrderHistoryScreen() {
           </Card>
         ) : (
           <View style={styles.ordersList}>
-            {orders.map((order) => (
-              <Card key={order.id} style={styles.orderCard}>
+            {completedOrders.map((order) => (
+              <Card key={order.id} style={[styles.orderCard, order.status === 'cancelled' && styles.cancelledCard]}>
                 <View style={styles.orderContent}>
                   <View style={styles.orderImage}>
                     <Text style={styles.orderImagePlaceholder}>🍽️</Text>
@@ -177,7 +157,7 @@ export default function OrderHistoryScreen() {
                           <Button
                             title="Order Again"
                             variant="outline"
-                            size="small"
+                            onPress={() => router.push('/(tabs)')}
                             style={styles.actionButton}
                           />
                           {!order.rating && (
@@ -266,6 +246,10 @@ const styles = StyleSheet.create({
   },
   orderCard: {
     padding: theme.spacing.lg,
+  },
+  cancelledCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.error,
   },
   orderContent: {
     flexDirection: 'row',

@@ -13,6 +13,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Package, Clock, CircleCheck as CheckCircle, Truck, MapPin, Phone, MessageCircle } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useOrders } from '@/contexts/OrderContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { theme } from '@/constants/theme';
 import { format } from 'date-fns';
 
@@ -43,32 +45,76 @@ interface OrderDetails {
 
 export default function OrderTrackingScreen() {
   const params = useLocalSearchParams();
+  const { orders, updateOrderStatus, realTimeEnabled } = useOrders();
+  const { user } = useAuth();
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [trackingSteps, setTrackingSteps] = useState<TrackingStep[]>([]);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadOrderDetails();
+    
+    // Set up auto-refresh every 20 seconds if not using real-time
+    if (!realTimeEnabled) {
+      const interval = setInterval(() => {
+        loadOrderDetails();
+      }, 20000);
+      setRefreshInterval(interval);
+    }
+    
+    return () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
   }, []);
 
   const loadOrderDetails = () => {
-    // Use params to create order details
-    const mockOrder: OrderDetails = {
-      id: params.orderId as string || '1',
-      trackingNumber: params.trackingNumber as string || `HF${Date.now().toString().slice(-8)}`,
-      foodTitle: params.foodTitle as string || 'Homemade Pasta Carbonara',
-      cookName: params.cookName as string || 'Maria Rodriguez',
-      cookPhone: '+1 (555) 123-4567',
-      quantity: parseInt(params.quantity as string) || 2,
-      totalPrice: parseFloat(params.totalPrice as string) || 33.98,
-      status: 'preparing',
-      orderDate: new Date(),
-      estimatedDeliveryTime: '12:30 PM - 1:00 PM',
-      deliveryAddress: '123 Main Street, San Francisco, CA 94102',
-      specialInstructions: 'Please ring the doorbell twice',
-    };
+    // Find the order in the context
+    const orderId = params.orderId as string;
+    const orderFromContext = orders.find(order => order.orderId === orderId);
+    
+    if (orderFromContext) {
+      // Create order details from context data
+      const orderDetails: OrderDetails = {
+        id: orderFromContext.orderId,
+        trackingNumber: orderFromContext.trackingNumber,
+        foodTitle: orderFromContext.items[0]?.title || 'Your Order',
+        cookName: orderFromContext.cookName,
+        cookPhone: '+1 (555) 123-4567', // Mock phone for demo
+        quantity: orderFromContext.quantity,
+        totalPrice: orderFromContext.totalPrice,
+        status: orderFromContext.status,
+        orderDate: new Date(orderFromContext.orderDate),
+        estimatedDeliveryTime: orderFromContext.deliveryTime,
+        deliveryAddress: orderFromContext.deliveryAddress,
+        specialInstructions: orderFromContext.deliveryInstructions,
+      };
+      
+      setOrderDetails(orderDetails);
+      generateTrackingSteps(orderDetails);
+      return;
+    }
+    
+    // Fallback to params if order not found in context
+    if (params.orderId) {
+      const fallbackOrder: OrderDetails = {
+        id: params.orderId as string,
+        trackingNumber: params.trackingNumber as string || `HF${Date.now().toString().slice(-8)}`,
+        foodTitle: params.foodTitle as string || 'Your Order',
+        cookName: params.cookName as string || 'Home Cook',
+        cookPhone: '+1 (555) 123-4567',
+        quantity: parseInt(params.quantity as string) || 1,
+        totalPrice: parseFloat(params.totalPrice as string) || 0,
+        status: 'confirmed',
+        orderDate: new Date(),
+        estimatedDeliveryTime: 'ASAP',
+        deliveryAddress: 'Your delivery address',
+      };
 
-    setOrderDetails(mockOrder);
-    generateTrackingSteps(mockOrder);
+      setOrderDetails(fallbackOrder);
+      generateTrackingSteps(fallbackOrder);
+    }
   };
 
   const generateTrackingSteps = (order: OrderDetails) => {
@@ -124,6 +170,44 @@ export default function OrderTrackingScreen() {
     setTrackingSteps(steps);
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return theme.colors.primary;
+      case 'preparing':
+        return theme.colors.warning;
+      case 'ready':
+        return theme.colors.info;
+      case 'picked_up':
+        return theme.colors.primary;
+      case 'delivered':
+        return '#4CAF50'; // Success green
+      case 'cancelled':
+        return '#F44336'; // Error red
+      default:
+        return theme.colors.onSurfaceVariant;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'confirmed':
+        return 'Order Confirmed';
+      case 'preparing':
+        return 'Preparing Food';
+      case 'ready':
+        return 'Ready for Pickup';
+      case 'picked_up':
+        return 'Out for Delivery';
+      case 'delivered':
+        return 'Order Delivered';
+      case 'cancelled':
+        return 'Order Cancelled';
+      default:
+        return status;
+    }
+  };
+
   const handleContactCook = () => {
     Alert.alert(
       'Contact Cook',
@@ -139,12 +223,47 @@ export default function OrderTrackingScreen() {
   const handleReportIssue = () => {
     Alert.alert(
       'Report Issue',
-      'What seems to be the problem with your order?',
+      'What issue are you having with this order?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Order is Late', onPress: () => console.log('Reporting late order...') },
-        { text: 'Wrong Order', onPress: () => console.log('Reporting wrong order...') },
-        { text: 'Other Issue', onPress: () => console.log('Reporting other issue...') },
+        { 
+          text: 'Order is Late', 
+          onPress: () => Alert.alert('Report Submitted', 'We\'ve notified the cook about the delay.') 
+        },
+        { 
+          text: 'Wrong Food', 
+          onPress: () => Alert.alert('Report Submitted', 'We\'ve reported the issue to the cook.') 
+        },
+        { 
+          text: 'Quality Issue', 
+          onPress: () => Alert.alert('Report Submitted', 'We\'ve reported the quality issue.') 
+        },
+      ]
+    );
+  };
+  
+  const handleCancelOrder = async () => {
+    if (!orderDetails) return;
+    
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order?',
+      [
+        { text: 'No', style: 'cancel' },
+        { 
+          text: 'Yes, Cancel', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await updateOrderStatus(orderDetails.id, 'cancelled');
+              Alert.alert('Order Cancelled', 'Your order has been cancelled successfully.');
+              loadOrderDetails(); // Reload to update UI
+            } catch (error) {
+              console.error('Error cancelling order:', error);
+              Alert.alert('Error', 'Failed to cancel the order. Please try again.');
+            }
+          }
+        },
       ]
     );
   };
@@ -184,7 +303,14 @@ export default function OrderTrackingScreen() {
         {/* Order Summary */}
         <Card style={styles.orderSummary}>
           <View style={styles.orderHeader}>
-            <Text style={styles.orderTitle}>{orderDetails.foodTitle}</Text>
+            <View style={styles.orderTitleWrapper}>
+              <Text style={styles.orderTitle}>{orderDetails.foodTitle}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(orderDetails.status) }]}>
+                <Text style={styles.statusBadgeText}>
+                  {getStatusText(orderDetails.status)}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.orderPrice}>${orderDetails.totalPrice.toFixed(2)}</Text>
           </View>
           
@@ -308,19 +434,38 @@ export default function OrderTrackingScreen() {
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <Button
-            title="Report an Issue"
+            title={orderDetails.status === 'delivered' ? 'Rate Order' : 'Report an Issue'}
             variant="outline"
-            onPress={handleReportIssue}
+            onPress={orderDetails.status === 'delivered' ? () => router.replace('/order-history') : handleReportIssue}
             style={styles.actionButton}
           />
-          
-          <Button
-            title="Order Again"
-            onPress={() => router.push('/(tabs)')}
-            style={styles.actionButton}
-          />
+          {
+            ['confirmed', 'preparing'].includes(orderDetails.status) ? (
+              <Button
+                title="Cancel Order"
+                variant="outline"
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={handleCancelOrder}
+              />
+            ) : (
+              <Button
+                title="Order Again"
+                onPress={() => router.push('/(tabs)')}
+                style={styles.actionButton}
+              />
+            )
+          }
         </View>
       </ScrollView>
+      
+      {/* Connection Status */}
+      {!realTimeEnabled && (
+        <View style={styles.connectionIndicator}>
+          <Text style={styles.connectionText}>
+            Live updates disabled. Pull down to refresh.
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -383,15 +528,31 @@ const styles = StyleSheet.create({
   orderHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: theme.spacing.lg,
+  },
+  orderTitleWrapper: {
+    flex: 1,
+    marginRight: theme.spacing.md,
   },
   orderTitle: {
     flex: 1,
     fontSize: 18,
     fontFamily: 'Inter-Bold',
     color: theme.colors.onSurface,
-    marginRight: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    marginTop: theme.spacing.xs,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
   },
   orderPrice: {
     fontSize: 20,
@@ -581,5 +742,22 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+  },
+  cancelButton: {
+    borderColor: theme.colors.error,
+  },
+  connectionIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  connectionText: {
+    color: 'white',
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
   },
 });
