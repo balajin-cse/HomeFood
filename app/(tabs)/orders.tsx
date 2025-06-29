@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -174,7 +175,7 @@ export default function OrdersScreen() {
                   <View style={styles.orderActions}>
                     <Button
                       title="Track Order"
-                      variant="outline"
+                      variant="primary"
                       size="small"
                       onPress={() => router.push({
                         pathname: '/order-tracking',
@@ -191,7 +192,19 @@ export default function OrdersScreen() {
                     />
                     <Button
                       title="Contact Cook"
+                      variant="outline"
                       size="small"
+                      onPress={() => {
+                        Alert.alert(
+                          'Contact Cook',
+                          `Would you like to contact ${order.cookName}?`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Call', onPress: () => console.log(`Calling ${order.cookName}...`) },
+                            { text: 'Message', onPress: () => console.log(`Messaging ${order.cookName}...`) },
+                          ]
+                        );
+                      }}
                       style={styles.actionButton}
                     />
                   </View>

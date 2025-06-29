@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Package, Clock, CircleCheck as CheckCircle, Truck, MapPin, Phone, MessageCircle } from 'lucide-react-native';
+import { useCart } from '@/contexts/CartContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useOrders } from '@/contexts/OrderContext';

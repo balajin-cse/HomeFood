@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
 import { format } from 'date-fns';
+import { useCart } from '@/contexts/CartContext';
 
 interface OrderHistoryItem {
   id: string;
@@ -33,6 +34,7 @@ interface OrderHistoryItem {
 export default function OrderHistoryScreen() {
   const { user } = useAuth();
   const { orders, refreshOrders, refreshing } = useOrders();
+  const { addToCart } = useCart();
   
   // Filter to get only completed or cancelled orders
   const completedOrders = orders
@@ -44,6 +46,10 @@ export default function OrderHistoryScreen() {
       quantity: order.quantity,
       totalPrice: order.totalPrice,
       status: order.status as 'delivered' | 'cancelled',
+      originalOrderId: order.orderId,
+      originalItems: order.items,
+      cookId: order.cookId,
+      hasReview: false, // TODO: Implement review tracking
       orderDate: new Date(order.orderDate),
       image: order.items[0]?.image || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
     }));
@@ -68,6 +74,72 @@ export default function OrderHistoryScreen() {
         fill={index < rating ? theme.colors.secondary : 'transparent'}
       />
     ));
+  };
+  
+  const handleOrderAgain = (order: OrderHistoryItem) => {
+    if (!order.originalItems || order.originalItems.length === 0) {
+      Alert.alert('Error', 'Could not find the original order items.');
+      return;
+    }
+    
+    // Add each item back to cart
+    try {
+      order.originalItems.forEach(item => {
+        addToCart(
+          {
+            foodId: item.id,
+            title: item.title,
+            description: '',
+            price: item.price,
+            image: item.image || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+            cookId: order.cookId,
+            cookName: item.cookName,
+          },
+          item.quantity,
+          item.specialInstructions
+        );
+      });
+      
+      Alert.alert(
+        'Added to Cart',
+        'The items from this order have been added to your cart.',
+        [
+          { text: 'Continue Shopping', style: 'cancel' },
+          { text: 'Go to Cart', onPress: () => router.push('/(tabs)/cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding items to cart:', error);
+      Alert.alert('Error', 'There was a problem adding these items to your cart.');
+    }
+  };
+  
+  const handleWriteReview = (order: OrderHistoryItem) => {
+    if (order.status !== 'delivered') {
+      Alert.alert('Info', 'You can only review delivered orders.');
+      return;
+    }
+    
+    Alert.alert(
+      'Rate Your Experience',
+      `How would you rate your experience with ${order.cookName}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...Array.from({ length: 5 }, (_, i) => {
+          const rating = i + 1;
+          return {
+            text: '⭐'.repeat(rating),
+            onPress: () => {
+              Alert.alert(
+                'Thanks for Your Rating!',
+                'Your feedback helps other customers find great home cooks.',
+                [{ text: 'OK' }]
+              );
+            }
+          };
+        })
+      ]
+    );
   };
 
   return (
@@ -158,14 +230,14 @@ export default function OrderHistoryScreen() {
                           <Button
                             title="Order Again"
                             variant="outline"
-                            onPress={() => router.push('/(tabs)')}
-                            style={styles.actionButton}
+                            onPress={() => handleOrderAgain(order)}
+                            style={[styles.actionButton, { flex: 1 }]}
                           />
                           {!order.rating && (
                             <Button
                               title="Write Review"
-                              size="small"
-                              style={styles.actionButton}
+                              onPress={() => handleWriteReview(order)}
+                              style={[styles.actionButton, { flex: 1 }]}
                             />
                           )}
                         </>
