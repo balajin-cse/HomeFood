@@ -1267,13 +1267,19 @@ function CustomerDiscoveryInterface() {
             </Card>
           ) : (
             filteredFoodItems.map((item) => (
-              <FoodCard
-                key={item.id}
-                item={item}
-                cook={cooks.find(c => c.id === item.cookId)}
-                onPress={() => handleFoodItemPress(item)}
-                onCookPress={() => handleCookPress(item.cookId)}
-              />
+              <View key={item.id}>
+                <FoodCard
+                  item={item}
+                  cook={cooks.find(c => c.id === item.cookId)}
+                  onPress={() => handleFoodItemPress(item)}
+                  onCookPress={() => handleCookPress(item.cookId)}
+                />
+                {item.quantity <= 0 && (
+                  <View style={styles.soldOutBadge}>
+                    <Text style={styles.soldOutText}>Sold Out</Text>
+                  </View>
+                )}
+              </View>
             ))
           )}
         </View>
@@ -2246,4 +2252,25 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: theme.colors.primary,
   },
+  badge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  badgeText: {
+    fontSize: 12,
+    color: '#333',
+  },
+  soldOutBadge: {
+    position: 'absolute',
+    top: '40%',
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  soldOutText: {
+    color: 'white',
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+  }
 });
