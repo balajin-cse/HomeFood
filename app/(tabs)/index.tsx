@@ -797,7 +797,7 @@ function CustomerDiscoveryInterface() {
   const loadCooks = async () => {
     const mockCooks: CookProfile[] = [
       {
-        id: '1',
+        id: '550e8400-e29b-41d4-a716-446655440001',
         name: 'Maria Rodriguez',
         avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -814,7 +814,7 @@ function CustomerDiscoveryInterface() {
         distance: 1.2,
       },
       {
-        id: '2',
+        id: '550e8400-e29b-41d4-a716-446655440002',
         name: 'Sarah Johnson',
         avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.7,
@@ -831,7 +831,7 @@ function CustomerDiscoveryInterface() {
         distance: 0.8,
       },
       {
-        id: '3',
+        id: '550e8400-e29b-41d4-a716-446655440003',
         name: 'David Chen',
         avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.8,
@@ -848,7 +848,7 @@ function CustomerDiscoveryInterface() {
         distance: 2.1,
       },
       {
-        id: '4',
+        id: '550e8400-e29b-41d4-a716-446655440004',
         name: 'Kenji Tanaka',
         avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
         rating: 4.9,
@@ -913,12 +913,12 @@ function CustomerDiscoveryInterface() {
       if (allFoodItems.length === 0) {
         const mockFoodItems: FoodItem[] = [
           {
-            id: '1',
+            id: 'menu-item-550e8400-e29b-41d4-a716-446655440001',
             title: 'Homemade Pasta Carbonara',
             description: 'Creamy pasta with crispy pancetta, fresh eggs, and aged parmesan cheese made with love',
             price: 16.99,
             image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=800',
-            cookId: '1',
+            cookId: '550e8400-e29b-41d4-a716-446655440001',
             cookName: 'Maria Rodriguez',
             cookRating: 4.9,
             distance: 1.2,
@@ -938,12 +938,12 @@ function CustomerDiscoveryInterface() {
             },
           },
           {
-            id: '2',
+            id: 'menu-item-550e8400-e29b-41d4-a716-446655440002',
             title: 'Artisan Avocado Toast',
             description: 'Sourdough bread topped with smashed avocado, cherry tomatoes, microgreens, and hemp seeds',
             price: 12.50,
             image: 'https://images.pexels.com/photos/1351238/pexels-photo-1351238.jpeg?auto=compress&cs=tinysrgb&w=800',
-            cookId: '2',
+            cookId: '550e8400-e29b-41d4-a716-446655440002',
             cookName: 'Sarah Johnson',
             cookRating: 4.7,
             distance: 0.8,
@@ -963,12 +963,12 @@ function CustomerDiscoveryInterface() {
             },
           },
           {
-            id: '3',
+            id: 'menu-item-550e8400-e29b-41d4-a716-446655440003',
             title: 'Pan-Seared Salmon',
             description: 'Atlantic salmon with roasted vegetables and lemon herb butter sauce, served with quinoa',
             price: 24.99,
             image: 'https://images.pexels.com/photos/725991/pexels-photo-725991.jpeg?auto=compress&cs=tinysrgb&w=800',
-            cookId: '3',
+            cookId: '550e8400-e29b-41d4-a716-446655440003',
             cookName: 'David Chen',
             cookRating: 4.8,
             distance: 2.1,
@@ -988,12 +988,12 @@ function CustomerDiscoveryInterface() {
             },
           },
           {
-            id: '4',
+            id: 'menu-item-550e8400-e29b-41d4-a716-446655440004',
             title: 'Authentic Ramen Bowl',
             description: 'Rich tonkotsu broth with handmade noodles, chashu pork, soft-boiled egg, and nori',
             price: 18.99,
             image: 'https://images.pexels.com/photos/884600/pexels-photo-884600.jpeg?auto=compress&cs=tinysrgb&w=800',
-            cookId: '4',
+            cookId: '550e8400-e29b-41d4-a716-446655440004',
             cookName: 'Kenji Tanaka',
             cookRating: 4.9,
             distance: 1.5,
@@ -1570,6 +1570,19 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
     width: '100%',
   },
+  headerTitle: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: 'white',
+    opacity: 0.9,
+    textAlign: 'center',
+  },
   greetingSection: {
     gap: theme.spacing.xs,
   },
@@ -1946,11 +1959,6 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     alignSelf: 'center',
   },
-  mealTypeContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
-  },
   mealTypeContent: {
     gap: theme.spacing.md,
   },
@@ -2126,12 +2134,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: theme.colors.primary,
     marginBottom: theme.spacing.xs,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
   },
   cookBadges: {
     marginBottom: theme.spacing.xl,
