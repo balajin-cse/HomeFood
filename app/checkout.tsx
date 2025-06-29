@@ -217,6 +217,7 @@ export default function CheckoutScreen() {
       }, {} as any);
 
       // Create orders for each cook using Supabase
+      console.log('🛒 Creating orders for', Object.keys(ordersByCook).length, 'cooks');
       const orderPromises = Object.values(ordersByCook).map(async (cookOrder: any) => {
         const orderData = {
           cookId: cookOrder.cookId,
@@ -228,6 +229,7 @@ export default function CheckoutScreen() {
             cookId: item.cookId,
             cookName: item.cookName,
             specialInstructions: item.specialInstructions,
+            image: item.image,
           })),
           cookName: cookOrder.cookName,
           customerName: user.name,
@@ -241,12 +243,14 @@ export default function CheckoutScreen() {
           status: 'confirmed' as const,
         };
 
+        console.log('📦 Creating order for cook:', cookOrder.cookName, 'with', cookOrder.items.length, 'items');
         // Create the order using OrderContext
         return await createOrder(orderData);
       });
 
       // Wait for all orders to be created
-      await Promise.all(orderPromises);
+      const createdOrderIds = await Promise.all(orderPromises);
+      console.log('✅ Successfully created', createdOrderIds.length, 'orders');
 
       // Clear cart and show success animation
       clearCart();

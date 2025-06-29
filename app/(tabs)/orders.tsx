@@ -23,11 +23,13 @@ export default function OrdersScreen() {
     orders, 
     loading, 
     refreshing, 
-    refreshOrders 
+    refreshOrders,
+    getCustomerActiveOrders
   } = useOrders();
 
-  // Filter orders for customer view (exclude cook orders)
-  const customerOrders = orders.filter(order => !user?.isCook || order.customerName === user?.name);
+  // Filter orders for customer view
+  const customerOrders = orders.filter(order => order.customerId === user?.id);
+  const activeOrders = getCustomerActiveOrders(user?.id || '');
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -78,7 +80,7 @@ export default function OrdersScreen() {
           <Clock size={32} color="white" />
           <Text style={styles.headerTitle}>My Orders</Text>
           <Text style={styles.headerSubtitle}>
-            Track your current orders and deliveries
+            Track your orders and deliveries ({activeOrders.length} active)
           </Text>
         </View>
       </LinearGradient>
@@ -122,6 +124,9 @@ export default function OrdersScreen() {
                       </Text>
                     </View>
                   </View>
+                  <Text style={styles.orderTime}>
+                    {new Date(order.orderDate).toLocaleString()}
+                  </Text>
                 </View>
 
                 <View style={styles.orderContent}>
@@ -279,11 +284,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: theme.spacing.xs,
   },
   trackingNumber: {
     fontSize: 16,
     fontFamily: 'Inter-Bold',
     color: theme.colors.onSurface,
+  },
+  orderTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
   },
   statusBadge: {
     paddingHorizontal: theme.spacing.sm,

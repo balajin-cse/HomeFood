@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Truck, MapPin, Phone, MessageCircle, CircleCheck as CheckCircle, Clock, Navigation, Package } from 'lucide-react-native';
+import { Truck, MapPin, Phone, MessageCircle, CircleCheck as CheckCircle, Clock, Navigation, Package, Bell, Users } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +23,7 @@ interface Order {
   trackingNumber: string;
   items: any[];
   cookId: string;
+  customerId: string;
   cookName: string;
   customerName: string;
   customerPhone: string;
@@ -44,12 +45,29 @@ export default function DeliveryScreen() {
     refreshing, 
     updateOrderStatus, 
     refreshOrders,
-    getOrdersByStatus 
+    getCookActiveOrders,
+    realTimeEnabled
   } = useOrders();
-  const [selectedTab, setSelectedTab] = useState<'ready' | 'delivering' | 'completed'>('ready');
+  const [selectedTab, setSelectedTab] = useState<'new' | 'preparing' | 'ready' | 'delivering' | 'completed'>('new');
+  const [lastOrderCount, setLastOrderCount] = useState(0);
 
   // Filter orders for this cook only
   const cookOrders = orders.filter(order => order.cookId === user?.id);
+  const activeOrders = getCookActiveOrders(user?.id || '');
+
+  // Monitor for new orders and show notification
+  useEffect(() => {
+    const newOrderCount = cookOrders.filter(order => order.status === 'confirmed').length;
+    if (newOrderCount > lastOrderCount && lastOrderCount > 0) {
+      // New order received!
+      Alert.alert(
+        '🔔 New Order Received!',
+        `You have ${newOrderCount} new order${newOrderCount > 1 ? 's' : ''} waiting for preparation.`,
+        [{ text: 'View Orders', onPress: () => setSelectedTab('new') }]
+      );
+    }
+    setLastOrderCount(newOrderCount);
+  }, [cookOrders, lastOrderCount]);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
@@ -64,7 +82,7 @@ export default function DeliveryScreen() {
   const handleContactCustomer = (order: Order) => {
     Alert.alert(
       'Contact Customer',
-      `Would you like to call ${order.customerName}?`,
+      `Would you like to contact ${order.customerName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Call', onPress: () => console.log('Calling customer...') },
@@ -103,12 +121,18 @@ export default function DeliveryScreen() {
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
+      case 'confirmed':
+        return '#FF9800';
+      case 'preparing':
+        return theme.colors.primary;
       case 'ready':
         return theme.colors.secondary;
       case 'picked_up':
-        return theme.colors.primary;
+        return '#2196F3';
       case 'delivered':
-        return theme.colors.success;
+        return '#4CAF50';
+      case 'cancelled':
+        return '#F44336';
       default:
         return theme.colors.onSurfaceVariant;
     }
@@ -116,12 +140,18 @@ export default function DeliveryScreen() {
 
   const getStatusText = (status: Order['status']) => {
     switch (status) {
+      case 'confirmed':
+        return 'New Order';
+      case 'preparing':
+        return 'Preparing';
       case 'ready':
         return 'Ready for Pickup';
       case 'picked_up':
         return 'Out for Delivery';
       case 'delivered':
         return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status;
     }
@@ -129,12 +159,16 @@ export default function DeliveryScreen() {
 
   const getFilteredOrders = () => {
     switch (selectedTab) {
+      case 'new':
+        return cookOrders.filter(order => order.status === 'confirmed');
+      case 'preparing':
+        return cookOrders.filter(order => order.status === 'preparing');
       case 'ready':
         return cookOrders.filter(order => order.status === 'ready');
       case 'delivering':
         return cookOrders.filter(order => order.status === 'picked_up');
       case 'completed':
-        return cookOrders.filter(order => order.status === 'delivered');
+        return cookOrders.filter(order => ['delivered', 'cancelled'].includes(order.status));
       default:
         return [];
     }
@@ -169,40 +203,62 @@ export default function DeliveryScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <Truck size={32} color="white" />
-          <Text style={styles.headerTitle}>Delivery Management</Text>
+          <View style={styles.headerTop}>
+            <Truck size={32} color="white" />
+            <View style={styles.connectionStatus}>
+              <View style={[styles.connectionDot, { backgroundColor: realTimeEnabled ? '#4CAF50' : '#FF9800' }]} />
+              <Text style={styles.connectionText}>
+                {realTimeEnabled ? 'Live' : 'Offline'}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.headerTitle}>Order Management</Text>
           <Text style={styles.headerSubtitle}>
-            Manage your order deliveries and customer communication
+            Manage incoming orders and deliveries
           </Text>
+          
+          {/* Quick Stats */}
+          <View style={styles.quickStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{activeOrders.length}</Text>
+              <Text style={styles.statLabel}>Active Orders</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{cookOrders.filter(o => o.status === 'confirmed').length}</Text>
+              <Text style={styles.statLabel}>New Orders</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{cookOrders.filter(o => o.status === 'delivered').length}</Text>
+              <Text style={styles.statLabel}>Completed</Text>
+            </View>
+          </View>
         </View>
       </LinearGradient>
 
       {/* Tabs */}
       <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'ready' && styles.activeTab]}
-          onPress={() => setSelectedTab('ready')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'ready' && styles.activeTabText]}>
-            Ready ({cookOrders.filter(o => o.status === 'ready').length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'delivering' && styles.activeTab]}
-          onPress={() => setSelectedTab('delivering')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'delivering' && styles.activeTabText]}>
-            Delivering ({cookOrders.filter(o => o.status === 'picked_up').length})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'completed' && styles.activeTab]}
-          onPress={() => setSelectedTab('completed')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'completed' && styles.activeTabText]}>
-            Completed ({cookOrders.filter(o => o.status === 'delivered').length})
-          </Text>
-        </TouchableOpacity>
+        {[
+          { id: 'new', label: 'New', count: cookOrders.filter(o => o.status === 'confirmed').length },
+          { id: 'preparing', label: 'Preparing', count: cookOrders.filter(o => o.status === 'preparing').length },
+          { id: 'ready', label: 'Ready', count: cookOrders.filter(o => o.status === 'ready').length },
+          { id: 'delivering', label: 'Delivering', count: cookOrders.filter(o => o.status === 'picked_up').length },
+          { id: 'completed', label: 'Completed', count: cookOrders.filter(o => ['delivered', 'cancelled'].includes(o.status)).length },
+        ].map((tab) => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[styles.tab, selectedTab === tab.id && styles.activeTab]}
+            onPress={() => setSelectedTab(tab.id as any)}
+          >
+            <Text style={[styles.tabText, selectedTab === tab.id && styles.activeTabText]}>
+              {tab.label}
+            </Text>
+            {tab.count > 0 && (
+              <View style={styles.tabBadge}>
+                <Text style={styles.tabBadgeText}>{tab.count}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
       </View>
 
       <ScrollView 
@@ -220,14 +276,18 @@ export default function DeliveryScreen() {
           <Card style={styles.emptyState}>
             <Package size={48} color={theme.colors.onSurfaceVariant} />
             <Text style={styles.emptyTitle}>
+              {selectedTab === 'new' && 'No new orders'}
+              {selectedTab === 'preparing' && 'No orders being prepared'}
               {selectedTab === 'ready' && 'No orders ready for delivery'}
               {selectedTab === 'delivering' && 'No orders currently being delivered'}
-              {selectedTab === 'completed' && 'No completed deliveries'}
+              {selectedTab === 'completed' && 'No completed orders'}
             </Text>
             <Text style={styles.emptyText}>
-              {selectedTab === 'ready' && 'Orders marked as ready will appear here'}
+              {selectedTab === 'new' && 'New customer orders will appear here automatically'}
+              {selectedTab === 'preparing' && 'Orders being prepared will appear here'}
+              {selectedTab === 'ready' && 'Orders ready for pickup will appear here'}
               {selectedTab === 'delivering' && 'Orders out for delivery will appear here'}
-              {selectedTab === 'completed' && 'Your completed deliveries will appear here'}
+              {selectedTab === 'completed' && 'Your completed orders will appear here'}
             </Text>
           </Card>
         ) : (
@@ -243,6 +303,9 @@ export default function DeliveryScreen() {
                     <Text style={styles.orderDetails}>
                       Order #{order.trackingNumber} • ${order.totalPrice.toFixed(2)}
                     </Text>
+                    <Text style={styles.orderTime}>
+                      {new Date(order.orderDate).toLocaleString()}
+                    </Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
                     <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
@@ -252,8 +315,11 @@ export default function DeliveryScreen() {
                 {/* Customer Information */}
                 <View style={styles.customerSection}>
                   <View style={styles.customerInfo}>
-                    <Text style={styles.customerName}>{order.customerName}</Text>
-                    <Text style={styles.customerPhone}>{order.customerPhone}</Text>
+                    <Users size={16} color={theme.colors.primary} />
+                    <View style={styles.customerDetails}>
+                      <Text style={styles.customerName}>{order.customerName}</Text>
+                      <Text style={styles.customerPhone}>{order.customerPhone}</Text>
+                    </View>
                   </View>
                   <TouchableOpacity 
                     style={styles.contactButton}
@@ -286,17 +352,34 @@ export default function DeliveryScreen() {
 
                 {/* Order Items */}
                 <View style={styles.itemsSection}>
-                  <Text style={styles.itemsLabel}>Order Items</Text>
+                  <Text style={styles.itemsLabel}>Order Items ({order.items.length})</Text>
                   {order.items.map((item, index) => (
                     <View key={index} style={styles.orderItem}>
                       <Text style={styles.itemName}>{item.title}</Text>
                       <Text style={styles.itemQuantity}>x{item.quantity}</Text>
+                      <Text style={styles.itemPrice}>${(item.price * item.quantity).toFixed(2)}</Text>
                     </View>
                   ))}
                 </View>
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
+                  {order.status === 'confirmed' && (
+                    <Button
+                      title="Start Preparing"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'preparing')}
+                      style={styles.actionButton}
+                    />
+                  )}
+                  
+                  {order.status === 'preparing' && (
+                    <Button
+                      title="Mark Ready"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'ready')}
+                      style={styles.actionButton}
+                    />
+                  )}
+
                   {order.status === 'ready' && (
                     <Button
                       title="Start Delivery"
@@ -317,6 +400,12 @@ export default function DeliveryScreen() {
                     <View style={styles.completedIndicator}>
                       <CheckCircle size={20} color={theme.colors.success} />
                       <Text style={styles.completedText}>Delivery Completed</Text>
+                    </View>
+                  )}
+
+                  {order.status === 'cancelled' && (
+                    <View style={[styles.completedIndicator, { backgroundColor: theme.colors.error + '20' }]}>
+                      <Text style={[styles.completedText, { color: theme.colors.error }]}>Order Cancelled</Text>
                     </View>
                   )}
                 </View>
@@ -353,11 +442,36 @@ const styles = StyleSheet.create({
   headerContent: {
     alignItems: 'center',
   },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: theme.spacing.md,
+  },
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  connectionText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: 'white',
+  },
   headerTitle: {
     fontSize: 24,
     fontFamily: 'Inter-Bold',
     color: 'white',
-    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
   headerSubtitle: {
@@ -367,6 +481,33 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: theme.spacing.lg,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  statItem: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+    minWidth: 80,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: 'white',
+    marginBottom: theme.spacing.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: 'white',
+    opacity: 0.9,
+    textAlign: 'center',
   },
   tabs: {
     flexDirection: 'row',
@@ -377,13 +518,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: theme.spacing.md,
     alignItems: 'center',
+    position: 'relative',
   },
   activeTab: {
     borderBottomWidth: 3,
     borderBottomColor: theme.colors.primary,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 12,
     color: theme.colors.onSurface,
     opacity: 0.7,
     fontFamily: 'Inter-Regular',
@@ -392,6 +534,23 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontFamily: 'Inter-Bold',
     opacity: 1,
+  },
+  tabBadge: {
+    position: 'absolute',
+    top: theme.spacing.xs,
+    right: theme.spacing.sm,
+    backgroundColor: theme.colors.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontFamily: 'Inter-Bold',
   },
   content: {
     flex: 1,
@@ -451,6 +610,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: theme.colors.onSurfaceVariant,
+    marginBottom: theme.spacing.xs,
+  },
+  orderTime: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
   },
   statusBadge: {
     paddingHorizontal: theme.spacing.md,
@@ -473,6 +638,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
   },
   customerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    flex: 1,
+  },
+  customerDetails: {
     flex: 1,
   },
   customerName: {
@@ -562,6 +733,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
   },
   itemName: {
     fontSize: 14,
@@ -573,6 +746,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: theme.colors.onSurfaceVariant,
+    marginHorizontal: theme.spacing.md,
+  },
+  itemPrice: {
+    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.primary,
   },
   actionButtons: {
     marginBottom: theme.spacing.md,
@@ -586,6 +765,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: theme.spacing.sm,
     paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.success + '20',
+    borderRadius: theme.borderRadius.md,
   },
   completedText: {
     fontSize: 16,
