@@ -93,7 +93,7 @@ function CookProfileInterface() {
         // Default items for demo
         const mockItems: MenuItem[] = [
           {
-            id: '1',
+            id: 'menu-item-550e8400-e29b-41d4-a716-446655440001',
             title: 'Homemade Pasta Carbonara',
             description: 'Fresh pasta with tomato sauce',
             price: 12.99,
@@ -101,7 +101,7 @@ function CookProfileInterface() {
             availableQuantity: 5,
             tags: ['Italian', 'Pasta'],
             isActive: true,
-            cookId: user?.id || '1',
+            cookId: user?.id || '550e8400-e29b-41d4-a716-446655440001',
             rating: 4.8,
             totalReviews: 23,
             image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
@@ -132,7 +132,7 @@ function CookProfileInterface() {
     }
 
     const item: MenuItem = {
-      id: Date.now().toString(),
+      id: `menu-item-${Date.now()}`,
       title: newItem.title,
       description: newItem.description,
       price: parseFloat(newItem.price),
@@ -140,7 +140,7 @@ function CookProfileInterface() {
       availableQuantity: parseInt(newItem.availableQuantity),
       tags: newItem.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
       isActive: true,
-      cookId: user?.id || '1',
+      cookId: user?.id || '550e8400-e29b-41d4-a716-446655440001',
       rating: 0,
       totalReviews: 0,
       image: 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
