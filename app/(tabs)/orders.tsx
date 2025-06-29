@@ -13,109 +13,23 @@ import { router } from 'expo-router';
 import { Clock, MapPin, Phone, RotateCcw } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
-import { supabase } from '@/lib/supabase';
-
-interface OrderItem {
-  id: string;
-  food_id: string;
-  food_title: string;
-  food_description: string | null;
-  food_image: string | null;
-  price: number;
-  quantity: number;
-  special_instructions: string | null;
-}
-
-interface Order {
-  id: string;
-  tracking_number: string;
-  customer_id: string | null;
-  cook_id: string | null;
-  status: 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'delivered' | 'cancelled';
-  total_amount: number;
-  delivery_address: string;
-  delivery_instructions: string | null;
-  estimated_delivery_time: string | null;
-  actual_delivery_time: string | null;
-  created_at: string;
-  updated_at: string;
-  items: OrderItem[];
-  cookName: string;
-  cookId: string;
-  customerName: string;
-  totalPrice: number;
-  quantity: number;
-  orderDate: string;
-  deliveryTime: string;
-  paymentMethod: string;
-}
 
 export default function OrdersScreen() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { 
+    orders, 
+    loading, 
+    refreshing, 
+    refreshOrders 
+  } = useOrders();
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
+  // Filter orders for customer view (exclude cook orders)
+  const customerOrders = orders.filter(order => !user?.isCook || order.customerName === user?.name);
 
-  const loadOrders = async () => {
-    try {
-      setLoading(true);
-      
-      // For now, using mock data until proper authentication is set up
-      const mockOrders: Order[] = [
-        {
-          id: '1',
-          tracking_number: 'TRK001',
-          customer_id: null,
-          cook_id: null,
-          status: 'confirmed',
-          total_amount: 33.98,
-          delivery_address: '123 Main St, Anytown, USA',
-          delivery_instructions: 'Please leave at front door',
-          estimated_delivery_time: '30-45 minutes',
-          actual_delivery_time: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          items: [
-            {
-              id: '1',
-              food_id: 'food1',
-              food_title: 'Homemade Pasta Carbonara',
-              food_description: 'Creamy pasta with bacon and parmesan',
-              food_image: 'https://images.pexels.com/photos/1279330/pexels-photo-1279330.jpeg?auto=compress&cs=tinysrgb&w=400',
-              price: 16.99,
-              quantity: 2,
-              special_instructions: null,
-            }
-          ],
-          cookName: 'Maria Rodriguez',
-          cookId: 'COOK123',
-          customerName: 'John Doe',
-          totalPrice: 33.98,
-          quantity: 2,
-          orderDate: new Date().toISOString(),
-          deliveryTime: '30-45 minutes',
-          paymentMethod: 'Credit Card',
-        }
-      ];
-      setOrders(mockOrders);
-    } catch (error) {
-      console.error('Error loading orders:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadOrders();
-    setRefreshing(false);
-  };
-
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
         return theme.colors.primary;
@@ -134,7 +48,7 @@ export default function OrdersScreen() {
     }
   };
 
-  const getStatusText = (status: Order['status']) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'confirmed':
         return 'Order Confirmed';
@@ -173,10 +87,14 @@ export default function OrdersScreen() {
         style={styles.content} 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />
         }
       >
-        {orders.length === 0 ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading orders...</Text>
+          </View>
+        ) : customerOrders.length === 0 ? (
           <Card style={styles.emptyState}>
             <Clock size={48} color={theme.colors.onSurfaceVariant} />
             <Text style={styles.emptyTitle}>No Active Orders</Text>
@@ -191,12 +109,12 @@ export default function OrdersScreen() {
           </Card>
         ) : (
           <View style={styles.ordersList}>
-            {orders.map((order) => (
-              <Card key={order.id} style={styles.orderCard}>
+            {customerOrders.map((order) => (
+              <Card key={order.orderId} style={styles.orderCard}>
                 <View style={styles.orderHeader}>
                   <View style={styles.orderInfo}>
                     <Text style={styles.trackingNumber}>
-                      Order #{order.tracking_number}
+                      Order #{order.trackingNumber}
                     </Text>
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
                       <Text style={styles.statusText}>
@@ -207,14 +125,14 @@ export default function OrdersScreen() {
                 </View>
 
                 <View style={styles.orderContent}>
-                  {order.items.map((item) => (
-                    <View key={item.id} style={styles.orderItem}>
+                  {order.items.map((item, index) => (
+                    <View key={`${item.id}-${index}`} style={styles.orderItem}>
                       <View style={styles.itemImage}>
                         <Text style={styles.itemImagePlaceholder}>🍽️</Text>
                       </View>
                       <View style={styles.itemDetails}>
                         <Text style={styles.itemTitle} numberOfLines={1}>
-                          {item.food_title}
+                          {item.title}
                         </Text>
                         <Text style={styles.cookName}>by {order.cookName}</Text>
                         <Text style={styles.itemPrice}>
@@ -229,14 +147,14 @@ export default function OrdersScreen() {
                   <View style={styles.detailRow}>
                     <MapPin size={16} color={theme.colors.onSurfaceVariant} />
                     <Text style={styles.detailText} numberOfLines={1}>
-                      {order.delivery_address}
+                      {order.deliveryAddress}
                     </Text>
                   </View>
                   
                   <View style={styles.detailRow}>
                     <Clock size={16} color={theme.colors.onSurfaceVariant} />
                     <Text style={styles.detailText}>
-                      Est. delivery: {order.estimated_delivery_time}
+                      Est. delivery: {order.deliveryTime}
                     </Text>
                   </View>
                 </View>
@@ -244,7 +162,7 @@ export default function OrdersScreen() {
                 <View style={styles.orderFooter}>
                   <View style={styles.totalSection}>
                     <Text style={styles.totalText}>
-                      Total: ${order.total_amount.toFixed(2)}
+                      Total: ${order.totalPrice.toFixed(2)}
                     </Text>
                   </View>
                   
@@ -253,7 +171,17 @@ export default function OrdersScreen() {
                       title="Track Order"
                       variant="outline"
                       size="small"
-                      onPress={() => router.push('/order-tracking')}
+                      onPress={() => router.push({
+                        pathname: '/order-tracking',
+                        params: {
+                          orderId: order.orderId,
+                          trackingNumber: order.trackingNumber,
+                          foodTitle: order.items[0]?.title || 'Order',
+                          cookName: order.cookName,
+                          quantity: order.quantity.toString(),
+                          totalPrice: order.totalPrice.toString(),
+                        }
+                      })}
                       style={styles.actionButton}
                     />
                     <Button
@@ -302,6 +230,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     marginTop: -theme.spacing.lg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
   },
   emptyState: {
     alignItems: 'center',

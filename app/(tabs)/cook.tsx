@@ -16,6 +16,7 @@ import { Star, Award, MapPin, Clock, Users, ChefHat, X, Plus, Eye, Package, Circ
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -55,34 +56,21 @@ interface MenuItem {
   image: string;
 }
 
-interface Order {
-  orderId: string;
-  trackingNumber: string;
-  items: any[];
-  cookId: string;
-  cookName: string;
-  customerName: string;
-  customerPhone: string;
-  totalPrice: number;
-  quantity: number;
-  status: 'confirmed' | 'preparing' | 'ready' | 'picked_up' | 'delivered' | 'cancelled';
-  orderDate: string;
-  deliveryTime: string;
-  deliveryAddress: string;
-  paymentMethod: string;
-  deliveryInstructions?: string;
-}
-
-export default function CookScreen() {
-  const { user } = useAuth();
-  const [cooks, setCooks] = useState<CookProfile[]>([]);
-  const [selectedCook, setSelectedCook] = useState<CookProfile | null>(null);
-  const [showCookProfile, setShowCookProfile] = useState(false);
+// Cook Profile Interface
+function CookProfileInterface() {
+  const { user, logout } = useAuth();
+  const { 
+    orders, 
+    loading, 
+    refreshing, 
+    updateOrderStatus, 
+    refreshOrders,
+    getOrdersByStatus 
+  } = useOrders();
+  const [notifications, setNotifications] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [cookOrders, setCookOrders] = useState<Order[]>([]);
   const [showOrdersModal, setShowOrdersModal] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -93,139 +81,8 @@ export default function CookScreen() {
   });
 
   useEffect(() => {
-    loadCooks();
     loadMenuItems();
-    if (user?.isCook) {
-      loadCookOrders();
-    }
   }, [user]);
-
-  const loadCooks = () => {
-    // Enhanced mock cook data with detailed profiles
-    const mockCooks: CookProfile[] = [
-      {
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        name: 'Maria Rodriguez',
-        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.9,
-        totalReviews: 247,
-        yearsExperience: 8,
-        specialties: ['Italian', 'Mediterranean', 'Pasta'],
-        totalOrders: 1250,
-        responseTime: '< 15 min',
-        isVerified: true,
-        badges: ['Top Chef', 'Fast Response', 'Customer Favorite'],
-        joinedDate: '2019-03-15',
-        bio: 'Passionate Italian chef with 8 years of experience. I learned traditional recipes from my nonna in Tuscany and love sharing authentic flavors with my community.',
-        location: 'North Beach, SF',
-        distance: 1.2,
-        menuItemsCount: 12,
-        averagePrice: 16.50,
-        isOnline: true,
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440002',
-        name: 'Sarah Johnson',
-        avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.7,
-        totalReviews: 189,
-        yearsExperience: 5,
-        specialties: ['Healthy', 'Vegan', 'Organic'],
-        totalOrders: 890,
-        responseTime: '< 20 min',
-        isVerified: true,
-        badges: ['Healthy Choice', 'Eco-Friendly'],
-        joinedDate: '2020-07-22',
-        bio: 'Certified nutritionist and plant-based chef. I create delicious, healthy meals using locally sourced organic ingredients.',
-        location: 'Mission District, SF',
-        distance: 0.8,
-        menuItemsCount: 8,
-        averagePrice: 13.75,
-        isOnline: false,
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440003',
-        name: 'David Chen',
-        avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.8,
-        totalReviews: 312,
-        yearsExperience: 12,
-        specialties: ['Asian Fusion', 'Seafood', 'Gourmet'],
-        totalOrders: 1580,
-        responseTime: '< 10 min',
-        isVerified: true,
-        badges: ['Master Chef', 'Premium Quality', 'Lightning Fast'],
-        joinedDate: '2018-01-10',
-        bio: 'Former Michelin-starred restaurant chef now bringing gourmet experiences to home dining. Specializing in fresh seafood and Asian fusion.',
-        location: 'Chinatown, SF',
-        distance: 2.1,
-        menuItemsCount: 15,
-        averagePrice: 22.30,
-        isOnline: true,
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440004',
-        name: 'Kenji Tanaka',
-        avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.9,
-        totalReviews: 156,
-        yearsExperience: 15,
-        specialties: ['Japanese', 'Ramen', 'Traditional'],
-        totalOrders: 720,
-        responseTime: '< 25 min',
-        isVerified: true,
-        badges: ['Authentic Master', 'Traditional Recipes'],
-        joinedDate: '2021-02-14',
-        bio: 'Third-generation ramen master from Tokyo. I bring authentic Japanese flavors and traditional techniques to every bowl.',
-        location: 'Japantown, SF',
-        distance: 1.5,
-        menuItemsCount: 6,
-        averagePrice: 18.99,
-        isOnline: true,
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440005',
-        name: 'Elena Papadopoulos',
-        avatar: 'https://images.pexels.com/photos/1181686/pexels-photo-1181686.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.6,
-        totalReviews: 134,
-        yearsExperience: 6,
-        specialties: ['Greek', 'Mediterranean', 'Healthy'],
-        totalOrders: 567,
-        responseTime: '< 30 min',
-        isVerified: true,
-        badges: ['Mediterranean Expert', 'Fresh Ingredients'],
-        joinedDate: '2020-11-08',
-        bio: 'Born in Athens, I bring authentic Greek flavors and Mediterranean wellness to every dish. Using family recipes passed down for generations.',
-        location: 'Castro, SF',
-        distance: 1.8,
-        menuItemsCount: 10,
-        averagePrice: 15.25,
-        isOnline: false,
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440006',
-        name: 'Marcus Campbell',
-        avatar: 'https://images.pexels.com/photos/1040880/pexels-photo-1040880.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
-        rating: 4.8,
-        totalReviews: 203,
-        yearsExperience: 10,
-        specialties: ['Caribbean', 'BBQ', 'Spicy'],
-        totalOrders: 892,
-        responseTime: '< 20 min',
-        isVerified: true,
-        badges: ['Spice Master', 'BBQ Expert', 'Island Flavors'],
-        joinedDate: '2019-08-12',
-        bio: 'Jamaican-born chef specializing in Caribbean cuisine and authentic jerk seasonings. Bringing island vibes to the Bay Area.',
-        location: 'Oakland, CA',
-        distance: 2.7,
-        menuItemsCount: 9,
-        averagePrice: 17.80,
-        isOnline: true,
-      },
-    ];
-    setCooks(mockCooks);
-  };
 
   const loadMenuItems = async () => {
     try {
@@ -257,27 +114,15 @@ export default function CookScreen() {
     }
   };
 
-  const loadCookOrders = async () => {
-    try {
-      const storedOrders = await AsyncStorage.getItem('orderHistory');
-      if (storedOrders) {
-        const allOrders = JSON.parse(storedOrders);
-        // Filter orders for this cook
-        const cookSpecificOrders = allOrders.filter((order: Order) => 
-          order.cookId === user?.id || order.cookName === user?.name
-        );
-        setCookOrders(cookSpecificOrders);
-      }
-    } catch (error) {
-      console.error('Error loading cook orders:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadCookOrders();
-    await loadMenuItems();
-    setRefreshing(false);
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', onPress: logout, style: 'destructive' },
+      ]
+    );
   };
 
   const handleAddItem = async () => {
@@ -336,47 +181,17 @@ export default function CookScreen() {
     }
   };
 
-  const handleCookPress = (cook: CookProfile) => {
-    setSelectedCook(cook);
-    setShowCookProfile(true);
-  };
-
-  const handleViewCookMenu = (cookId: string) => {
-    setShowCookProfile(false);
-    // Navigate to discover page with cook filter
-    router.push({
-      pathname: '/(tabs)',
-      params: { cookId }
-    });
-  };
-
-  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: any) => {
     try {
-      // Update order status in AsyncStorage
-      const storedOrders = await AsyncStorage.getItem('orderHistory');
-      if (storedOrders) {
-        const allOrders = JSON.parse(storedOrders);
-        const updatedOrders = allOrders.map((order: Order) =>
-          order.orderId === orderId ? { ...order, status: newStatus } : order
-        );
-        
-        await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
-        
-        // Update local state
-        const updatedCookOrders = cookOrders.map(order =>
-          order.orderId === orderId ? { ...order, status: newStatus } : order
-        );
-        setCookOrders(updatedCookOrders);
-        
-        Alert.alert('Success', `Order status updated to ${newStatus}`);
-      }
+      await updateOrderStatus(orderId, newStatus);
+      Alert.alert('Success', `Order status updated to ${newStatus}`);
     } catch (error) {
       console.error('Error updating order status:', error);
       Alert.alert('Error', 'Failed to update order status');
     }
   };
 
-  const getStatusColor = (status: Order['status']) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
         return '#FF9800';
@@ -395,7 +210,7 @@ export default function CookScreen() {
     }
   };
 
-  const getStatusText = (status: Order['status']) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'confirmed':
         return 'Confirmed';
@@ -414,238 +229,21 @@ export default function CookScreen() {
     }
   };
 
-  const renderStars = (rating: number, size: number = 14) => {
-    return Array.from({ length: 5 }, (_, index) => (
-      <Star
-        key={index}
-        size={size}
-        color={index < Math.floor(rating) ? theme.colors.secondary : theme.colors.outline}
-        fill={index < Math.floor(rating) ? theme.colors.secondary : 'transparent'}
-      />
-    ));
-  };
+  // Filter orders for this cook
+  const cookOrders = orders.filter(order => order.cookId === user?.id);
+  const activeOrders = cookOrders.filter(order => 
+    ['confirmed', 'preparing', 'ready'].includes(order.status)
+  );
 
-  if (!user?.isCook) {
-    return (
-      <View style={styles.container}>
-        {/* Header */}
-        <LinearGradient
-          colors={[theme.colors.primary, theme.colors.primaryDark]}
-          style={styles.header}
-        >
-          <View style={styles.headerContent}>
-            <ChefHat size={32} color="white" />
-            <Text style={styles.headerTitle}>Discover Amazing Cooks</Text>
-            <Text style={styles.headerSubtitle}>
-              Browse talented home cooks in your area
-            </Text>
-          </View>
-        </LinearGradient>
+  const todayEarnings = cookOrders
+    .filter(order => {
+      const orderDate = new Date(order.orderDate);
+      const today = new Date();
+      return orderDate.toDateString() === today.toDateString() && order.status === 'delivered';
+    })
+    .reduce((total, order) => total + order.totalPrice, 0);
 
-        {/* Cooks List */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.cooksGrid}>
-            {cooks.map((cook) => (
-              <TouchableOpacity
-                key={cook.id}
-                style={styles.cookCard}
-                onPress={() => handleCookPress(cook)}
-                activeOpacity={0.9}
-              >
-                <Card style={styles.cookCardInner}>
-                  {/* Cook Header */}
-                  <View style={styles.cookHeader}>
-                    <Image source={{ uri: cook.avatar }} style={styles.cookAvatar} />
-                    <View style={styles.onlineIndicator}>
-                      <View style={[styles.onlineDot, { backgroundColor: cook.isOnline ? theme.colors.success : theme.colors.outline }]} />
-                    </View>
-                    {cook.isVerified && (
-                      <View style={styles.verifiedBadge}>
-                        <Award size={16} color={theme.colors.primary} />
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Cook Info */}
-                  <View style={styles.cookInfo}>
-                    <Text style={styles.cookName} numberOfLines={1}>{cook.name}</Text>
-                    <Text style={styles.cookLocation} numberOfLines={1}>{cook.location}</Text>
-                    
-                    {/* Rating */}
-                    <View style={styles.cookRating}>
-                      <View style={styles.ratingStars}>
-                        {renderStars(cook.rating, 12)}
-                      </View>
-                      <Text style={styles.ratingText}>
-                        {cook.rating} ({cook.totalReviews})
-                      </Text>
-                    </View>
-
-                    {/* Specialties */}
-                    <View style={styles.specialties}>
-                      {cook.specialties.slice(0, 2).map((specialty, index) => (
-                        <View key={index} style={styles.specialtyTag}>
-                          <Text style={styles.specialtyText}>{specialty}</Text>
-                        </View>
-                      ))}
-                    </View>
-
-                    {/* Stats */}
-                    <View style={styles.cookStats}>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{cook.menuItemsCount}</Text>
-                        <Text style={styles.statLabel}>dishes</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>${cook.averagePrice}</Text>
-                        <Text style={styles.statLabel}>avg price</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Text style={styles.statNumber}>{cook.distance}km</Text>
-                        <Text style={styles.statLabel}>away</Text>
-                      </View>
-                    </View>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Become a Cook CTA */}
-          <Card style={styles.becomeCookCard}>
-            <View style={styles.becomeCookContent}>
-              <ChefHat size={48} color={theme.colors.primary} />
-              <Text style={styles.becomeCookTitle}>Become a Home Cook</Text>
-              <Text style={styles.becomeCookText}>
-                Share your culinary skills and earn money by cooking for your community
-              </Text>
-              <Button
-                mode="contained"
-                onPress={() => router.push('/cook-registration')}
-                style={styles.becomeCookButton}
-              >
-                Apply to Cook
-              </Button>
-            </View>
-          </Card>
-        </ScrollView>
-
-        {/* Cook Profile Modal */}
-        <Modal
-          visible={showCookProfile}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowCookProfile(false)}
-        >
-          {selectedCook && (
-            <View style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Cook Profile</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowCookProfile(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <X size={24} color={theme.colors.onSurface} />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalContent}>
-                {/* Cook Profile Header */}
-                <View style={styles.cookProfileHeader}>
-                  <Image source={{ uri: selectedCook.avatar }} style={styles.cookProfileAvatar} />
-                  <View style={styles.cookProfileInfo}>
-                    <View style={styles.cookProfileNameRow}>
-                      <Text style={styles.cookProfileName}>{selectedCook.name}</Text>
-                      {selectedCook.isVerified && (
-                        <Award size={20} color={theme.colors.primary} />
-                      )}
-                    </View>
-                    <Text style={styles.cookProfileLocation}>{selectedCook.location}</Text>
-                    <View style={styles.cookProfileRating}>
-                      <View style={styles.ratingStars}>
-                        {renderStars(selectedCook.rating, 16)}
-                      </View>
-                      <Text style={styles.cookProfileRatingText}>
-                        {selectedCook.rating} ({selectedCook.totalReviews} reviews)
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Cook Stats */}
-                <View style={styles.cookStatsDetailed}>
-                  <View style={styles.statItemDetailed}>
-                    <Text style={styles.statNumberDetailed}>{selectedCook.yearsExperience}</Text>
-                    <Text style={styles.statLabelDetailed}>Years Experience</Text>
-                  </View>
-                  <View style={styles.statItemDetailed}>
-                    <Text style={styles.statNumberDetailed}>{selectedCook.totalOrders}</Text>
-                    <Text style={styles.statLabelDetailed}>Total Orders</Text>
-                  </View>
-                  <View style={styles.statItemDetailed}>
-                    <Text style={styles.statNumberDetailed}>{selectedCook.responseTime}</Text>
-                    <Text style={styles.statLabelDetailed}>Response Time</Text>
-                  </View>
-                </View>
-
-                {/* Badges */}
-                <View style={styles.cookBadges}>
-                  <Text style={styles.sectionTitle}>Achievements</Text>
-                  <View style={styles.badgesList}>
-                    {selectedCook.badges.map((badge, index) => (
-                      <View key={index} style={styles.achievementBadge}>
-                        <Award size={16} color={theme.colors.primary} />
-                        <Text style={styles.achievementText}>{badge}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Specialties */}
-                <View style={styles.cookSpecialtiesDetailed}>
-                  <Text style={styles.sectionTitle}>Specialties</Text>
-                  <View style={styles.specialtiesList}>
-                    {selectedCook.specialties.map((specialty, index) => (
-                      <View key={index} style={styles.specialtyTagDetailed}>
-                        <Text style={styles.specialtyTextDetailed}>{specialty}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Bio */}
-                <View style={styles.cookBio}>
-                  <Text style={styles.sectionTitle}>About</Text>
-                  <Text style={styles.bioText}>{selectedCook.bio}</Text>
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.cookActions}>
-                  <Button
-                    mode="contained"
-                    onPress={() => handleViewCookMenu(selectedCook.id)}
-                    style={styles.actionButton}
-                    icon={() => <Eye size={20} color="white" />}
-                  >
-                    View Menu
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      // Open messaging
-                    }}
-                    style={styles.actionButton}
-                  >
-                    Message Cook
-                  </Button>
-                </View>
-              </ScrollView>
-            </View>
-          )}
-        </Modal>
-      </View>
-    );
-  }
+  const completedOrders = cookOrders.filter(order => order.status === 'delivered').length;
 
   return (
     <View style={styles.container}>
@@ -660,7 +258,7 @@ export default function CookScreen() {
             <Text style={styles.statLabel}>Menu Items</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{cookOrders.filter(o => ['confirmed', 'preparing', 'ready'].includes(o.status)).length}</Text>
+            <Text style={styles.statValue}>{activeOrders.length}</Text>
             <Text style={styles.statLabel}>Active Orders</Text>
           </View>
           <TouchableOpacity 
@@ -676,11 +274,11 @@ export default function CookScreen() {
       <ScrollView 
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />
         }
       >
         {/* Active Orders Section */}
-        {cookOrders.filter(order => ['confirmed', 'preparing', 'ready'].includes(order.status)).length > 0 && (
+        {activeOrders.length > 0 && (
           <Card style={styles.activeOrdersCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Active Orders</Text>
@@ -689,59 +287,56 @@ export default function CookScreen() {
               </TouchableOpacity>
             </View>
             
-            {cookOrders
-              .filter(order => ['confirmed', 'preparing', 'ready'].includes(order.status))
-              .slice(0, 3)
-              .map((order) => (
-                <View key={order.orderId} style={styles.orderItem}>
-                  <View style={styles.orderHeader}>
-                    <Text style={styles.orderTitle}>
-                      {order.items[0]?.title || 'Order'} 
-                      {order.items.length > 1 && ` +${order.items.length - 1} more`}
-                    </Text>
-                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-                      <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
-                    </View>
-                  </View>
-                  
-                  <Text style={styles.customerInfo}>
-                    Customer: {order.customerName} • ${order.totalPrice.toFixed(2)}
+            {activeOrders.slice(0, 3).map((order) => (
+              <View key={order.orderId} style={styles.orderItem}>
+                <View style={styles.orderHeader}>
+                  <Text style={styles.orderTitle}>
+                    {order.items[0]?.title || 'Order'} 
+                    {order.items.length > 1 && ` +${order.items.length - 1} more`}
                   </Text>
-                  
-                  <View style={styles.orderActions}>
-                    {order.status === 'confirmed' && (
-                      <Button
-                        mode="contained"
-                        onPress={() => handleUpdateOrderStatus(order.orderId, 'preparing')}
-                        style={styles.orderActionButton}
-                        compact
-                      >
-                        Start Preparing
-                      </Button>
-                    )}
-                    {order.status === 'preparing' && (
-                      <Button
-                        mode="contained"
-                        onPress={() => handleUpdateOrderStatus(order.orderId, 'ready')}
-                        style={styles.orderActionButton}
-                        compact
-                      >
-                        Mark Ready
-                      </Button>
-                    )}
-                    {order.status === 'ready' && (
-                      <Button
-                        mode="contained"
-                        onPress={() => handleUpdateOrderStatus(order.orderId, 'picked_up')}
-                        style={styles.orderActionButton}
-                        compact
-                      >
-                        Mark Picked Up
-                      </Button>
-                    )}
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
+                    <Text style={styles.statusText}>{getStatusText(order.status)}</Text>
                   </View>
                 </View>
-              ))}
+                
+                <Text style={styles.customerInfo}>
+                  Customer: {order.customerName} • ${order.totalPrice.toFixed(2)}
+                </Text>
+                
+                <View style={styles.orderActions}>
+                  {order.status === 'confirmed' && (
+                    <Button
+                      mode="contained"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'preparing')}
+                      style={styles.orderActionButton}
+                      compact
+                    >
+                      Start Preparing
+                    </Button>
+                  )}
+                  {order.status === 'preparing' && (
+                    <Button
+                      mode="contained"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'ready')}
+                      style={styles.orderActionButton}
+                      compact
+                    >
+                      Mark Ready
+                    </Button>
+                  )}
+                  {order.status === 'ready' && (
+                    <Button
+                      mode="contained"
+                      onPress={() => handleUpdateOrderStatus(order.orderId, 'picked_up')}
+                      style={styles.orderActionButton}
+                      compact
+                    >
+                      Mark Picked Up
+                    </Button>
+                  )}
+                </View>
+              </View>
+            ))}
           </Card>
         )}
 
@@ -841,14 +436,6 @@ export default function CookScreen() {
                   <Text style={styles.menuQuantity}>
                     Available: {item.availableQuantity}
                   </Text>
-                  <View style={styles.menuRating}>
-                    <View style={styles.ratingStars}>
-                      {renderStars(item.rating)}
-                    </View>
-                    <Text style={styles.ratingText}>
-                      {item.rating > 0 ? `${item.rating} (${item.totalReviews})` : 'No reviews yet'}
-                    </Text>
-                  </View>
                   <View style={styles.menuTags}>
                     {item.tags.map((tag) => (
                       <Chip key={tag} compact style={styles.tag}>
@@ -972,6 +559,188 @@ export default function CookScreen() {
       </Modal>
     </View>
   );
+}
+
+// Customer Profile Interface (existing code for customer view)
+function CustomerProfileInterface() {
+  const { user } = useAuth();
+  const [cooks, setCooks] = useState<CookProfile[]>([]);
+  const [selectedCook, setSelectedCook] = useState<CookProfile | null>(null);
+  const [showCookProfile, setShowCookProfile] = useState(false);
+
+  useEffect(() => {
+    loadCooks();
+  }, []);
+
+  const loadCooks = () => {
+    // Enhanced mock cook data with detailed profiles
+    const mockCooks: CookProfile[] = [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        name: 'Maria Rodriguez',
+        avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop',
+        rating: 4.9,
+        totalReviews: 247,
+        yearsExperience: 8,
+        specialties: ['Italian', 'Mediterranean', 'Pasta'],
+        totalOrders: 1250,
+        responseTime: '< 15 min',
+        isVerified: true,
+        badges: ['Top Chef', 'Fast Response', 'Customer Favorite'],
+        joinedDate: '2019-03-15',
+        bio: 'Passionate Italian chef with 8 years of experience. I learned traditional recipes from my nonna in Tuscany and love sharing authentic flavors with my community.',
+        location: 'North Beach, SF',
+        distance: 1.2,
+        menuItemsCount: 12,
+        averagePrice: 16.50,
+        isOnline: true,
+      },
+      // Add more cooks as needed...
+    ];
+    setCooks(mockCooks);
+  };
+
+  const handleCookPress = (cook: CookProfile) => {
+    setSelectedCook(cook);
+    setShowCookProfile(true);
+  };
+
+  const handleViewCookMenu = (cookId: string) => {
+    setShowCookProfile(false);
+    router.push({
+      pathname: '/(tabs)',
+      params: { cookId }
+    });
+  };
+
+  const renderStars = (rating: number, size: number = 14) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        size={size}
+        color={index < Math.floor(rating) ? theme.colors.secondary : theme.colors.outline}
+        fill={index < Math.floor(rating) ? theme.colors.secondary : 'transparent'}
+      />
+    ));
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <LinearGradient
+        colors={[theme.colors.primary, theme.colors.primaryDark]}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <ChefHat size={32} color="white" />
+          <Text style={styles.headerTitle}>Discover Amazing Cooks</Text>
+          <Text style={styles.headerSubtitle}>
+            Browse talented home cooks in your area
+          </Text>
+        </View>
+      </LinearGradient>
+
+      {/* Cooks List */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.cooksGrid}>
+          {cooks.map((cook) => (
+            <TouchableOpacity
+              key={cook.id}
+              style={styles.cookCard}
+              onPress={() => handleCookPress(cook)}
+              activeOpacity={0.9}
+            >
+              <Card style={styles.cookCardInner}>
+                {/* Cook Header */}
+                <View style={styles.cookHeader}>
+                  <Image source={{ uri: cook.avatar }} style={styles.cookAvatar} />
+                  <View style={styles.onlineIndicator}>
+                    <View style={[styles.onlineDot, { backgroundColor: cook.isOnline ? theme.colors.success : theme.colors.outline }]} />
+                  </View>
+                  {cook.isVerified && (
+                    <View style={styles.verifiedBadge}>
+                      <Award size={16} color={theme.colors.primary} />
+                    </View>
+                  )}
+                </View>
+
+                {/* Cook Info */}
+                <View style={styles.cookInfo}>
+                  <Text style={styles.cookName} numberOfLines={1}>{cook.name}</Text>
+                  <Text style={styles.cookLocation} numberOfLines={1}>{cook.location}</Text>
+                  
+                  {/* Rating */}
+                  <View style={styles.cookRating}>
+                    <View style={styles.ratingStars}>
+                      {renderStars(cook.rating, 12)}
+                    </View>
+                    <Text style={styles.ratingText}>
+                      {cook.rating} ({cook.totalReviews})
+                    </Text>
+                  </View>
+
+                  {/* Specialties */}
+                  <View style={styles.specialties}>
+                    {cook.specialties.slice(0, 2).map((specialty, index) => (
+                      <View key={index} style={styles.specialtyTag}>
+                        <Text style={styles.specialtyText}>{specialty}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Stats */}
+                  <View style={styles.cookStats}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statNumber}>{cook.menuItemsCount}</Text>
+                      <Text style={styles.statLabel}>dishes</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statNumber}>${cook.averagePrice}</Text>
+                      <Text style={styles.statLabel}>avg price</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statNumber}>{cook.distance}km</Text>
+                      <Text style={styles.statLabel}>away</Text>
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Become a Cook CTA */}
+        <Card style={styles.becomeCookCard}>
+          <View style={styles.becomeCookContent}>
+            <ChefHat size={48} color={theme.colors.primary} />
+            <Text style={styles.becomeCookTitle}>Become a Home Cook</Text>
+            <Text style={styles.becomeCookText}>
+              Share your culinary skills and earn money by cooking for your community
+            </Text>
+            <Button
+              mode="contained"
+              onPress={() => router.push('/cook-registration')}
+              style={styles.becomeCookButton}
+            >
+              Apply to Cook
+            </Button>
+          </View>
+        </Card>
+      </ScrollView>
+    </View>
+  );
+}
+
+// Main component
+export default function CookScreen() {
+  const { user } = useAuth();
+
+  // Show cook interface for cooks, customer interface for customers
+  if (user?.isCook) {
+    return <CookProfileInterface />;
+  }
+
+  return <CustomerProfileInterface />;
 }
 
 const styles = StyleSheet.create({
@@ -1203,11 +972,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     color: theme.colors.primary,
   },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-  },
   becomeCookCard: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
@@ -1232,161 +996,6 @@ const styles = StyleSheet.create({
   },
   becomeCookButton: {
     marginTop: theme.spacing.md,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? 60 : theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.outline,
-    backgroundColor: theme.colors.surface,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-  },
-  modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.surfaceVariant,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalContent: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
-  cookProfileHeader: {
-    flexDirection: 'row',
-    gap: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
-  cookProfileAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-  cookProfileInfo: {
-    flex: 1,
-  },
-  cookProfileNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.xs,
-  },
-  cookProfileName: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.onSurface,
-  },
-  cookProfileLocation: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    marginBottom: theme.spacing.sm,
-  },
-  cookProfileRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  cookProfileRatingText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  cookStatsDetailed: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-  },
-  statItemDetailed: {
-    alignItems: 'center',
-  },
-  statNumberDetailed: {
-    fontSize: 20,
-    fontFamily: 'Inter-Bold',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  statLabelDetailed: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
-  },
-  cookBadges: {
-    marginBottom: theme.spacing.xl,
-  },
-  badgesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  achievementBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  achievementText: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.primary,
-  },
-  cookSpecialtiesDetailed: {
-    marginBottom: theme.spacing.xl,
-  },
-  specialtiesList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-  },
-  specialtyTagDetailed: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.surfaceVariant,
-    borderRadius: theme.borderRadius.md,
-  },
-  specialtyTextDetailed: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: theme.colors.onSurface,
-  },
-  cookBio: {
-    marginBottom: theme.spacing.xl,
-  },
-  bioText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: theme.colors.onSurfaceVariant,
-    lineHeight: 20,
-  },
-  cookActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  actionButton: {
-    flex: 1,
   },
   addForm: {
     padding: 20,
@@ -1474,12 +1083,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontFamily: 'Inter-Regular',
   },
-  menuRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
   menuTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1498,6 +1101,38 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: theme.colors.primary,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 60 : theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.outline,
+    backgroundColor: theme.colors.surface,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: theme.colors.onSurface,
+  },
+  modalCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surfaceVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalContent: {
+    flex: 1,
+    padding: theme.spacing.lg,
   },
   emptyOrders: {
     alignItems: 'center',

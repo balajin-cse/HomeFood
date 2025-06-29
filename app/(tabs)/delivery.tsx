@@ -15,8 +15,8 @@ import { Truck, MapPin, Phone, MessageCircle, CheckCircle, Clock, Navigation, Pa
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrders } from '@/contexts/OrderContext';
 import { theme } from '@/constants/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Order {
   orderId: string;
@@ -38,56 +38,23 @@ interface Order {
 
 export default function DeliveryScreen() {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+  const { 
+    orders, 
+    loading, 
+    refreshing, 
+    updateOrderStatus, 
+    refreshOrders,
+    getOrdersByStatus 
+  } = useOrders();
   const [selectedTab, setSelectedTab] = useState<'ready' | 'delivering' | 'completed'>('ready');
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  const loadOrders = async () => {
-    try {
-      const storedOrders = await AsyncStorage.getItem('orderHistory');
-      if (storedOrders) {
-        const allOrders = JSON.parse(storedOrders);
-        // Filter orders for this cook
-        const cookOrders = allOrders.filter((order: Order) => 
-          order.cookId === user?.id || order.cookName === user?.name
-        );
-        setOrders(cookOrders);
-      }
-    } catch (error) {
-      console.error('Error loading orders:', error);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadOrders();
-    setRefreshing(false);
-  };
+  // Filter orders for this cook only
+  const cookOrders = orders.filter(order => order.cookId === user?.id);
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
-      // Update order status in AsyncStorage
-      const storedOrders = await AsyncStorage.getItem('orderHistory');
-      if (storedOrders) {
-        const allOrders = JSON.parse(storedOrders);
-        const updatedOrders = allOrders.map((order: Order) =>
-          order.orderId === orderId ? { ...order, status: newStatus } : order
-        );
-        
-        await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
-        
-        // Update local state
-        const updatedLocalOrders = orders.map(order =>
-          order.orderId === orderId ? { ...order, status: newStatus } : order
-        );
-        setOrders(updatedLocalOrders);
-        
-        Alert.alert('Success', `Order status updated to ${getStatusText(newStatus)}`);
-      }
+      await updateOrderStatus(orderId, newStatus);
+      Alert.alert('Success', `Order status updated to ${getStatusText(newStatus)}`);
     } catch (error) {
       console.error('Error updating order status:', error);
       Alert.alert('Error', 'Failed to update order status');
@@ -163,17 +130,36 @@ export default function DeliveryScreen() {
   const getFilteredOrders = () => {
     switch (selectedTab) {
       case 'ready':
-        return orders.filter(order => order.status === 'ready');
+        return cookOrders.filter(order => order.status === 'ready');
       case 'delivering':
-        return orders.filter(order => order.status === 'picked_up');
+        return cookOrders.filter(order => order.status === 'picked_up');
       case 'completed':
-        return orders.filter(order => order.status === 'delivered');
+        return cookOrders.filter(order => order.status === 'delivered');
       default:
         return [];
     }
   };
 
   const filteredOrders = getFilteredOrders();
+
+  if (!user?.isCook) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[theme.colors.primary, theme.colors.primaryDark]}
+          style={styles.header}
+        >
+          <View style={styles.headerContent}>
+            <Truck size={32} color="white" />
+            <Text style={styles.headerTitle}>Access Denied</Text>
+            <Text style={styles.headerSubtitle}>
+              This page is only available for registered cooks
+            </Text>
+          </View>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -198,7 +184,7 @@ export default function DeliveryScreen() {
           onPress={() => setSelectedTab('ready')}
         >
           <Text style={[styles.tabText, selectedTab === 'ready' && styles.activeTabText]}>
-            Ready ({orders.filter(o => o.status === 'ready').length})
+            Ready ({cookOrders.filter(o => o.status === 'ready').length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -206,7 +192,7 @@ export default function DeliveryScreen() {
           onPress={() => setSelectedTab('delivering')}
         >
           <Text style={[styles.tabText, selectedTab === 'delivering' && styles.activeTabText]}>
-            Delivering ({orders.filter(o => o.status === 'picked_up').length})
+            Delivering ({cookOrders.filter(o => o.status === 'picked_up').length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -214,7 +200,7 @@ export default function DeliveryScreen() {
           onPress={() => setSelectedTab('completed')}
         >
           <Text style={[styles.tabText, selectedTab === 'completed' && styles.activeTabText]}>
-            Completed ({orders.filter(o => o.status === 'delivered').length})
+            Completed ({cookOrders.filter(o => o.status === 'delivered').length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -222,11 +208,15 @@ export default function DeliveryScreen() {
       <ScrollView 
         style={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={refreshOrders} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {filteredOrders.length === 0 ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>Loading orders...</Text>
+          </View>
+        ) : filteredOrders.length === 0 ? (
           <Card style={styles.emptyState}>
             <Package size={48} color={theme.colors.onSurfaceVariant} />
             <Text style={styles.emptyTitle}>
@@ -406,6 +396,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: theme.spacing.lg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xxl,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: theme.colors.onSurfaceVariant,
   },
   emptyState: {
     alignItems: 'center',

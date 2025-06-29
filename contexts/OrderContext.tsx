@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OrderItem {
   id: string;
@@ -71,11 +72,6 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       try {
         if (typeof supabase.removeAllChannels === 'function') {
           supabase.removeAllChannels();
-        } else if (typeof supabase.getChannels === 'function') {
-          const channels = supabase.getChannels();
-          channels.forEach(channel => {
-            supabase.removeChannel(channel);
-          });
         }
       } catch (error) {
         console.error('Error cleaning up Supabase channels:', error);
@@ -86,27 +82,31 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const setupRealTimeSubscription = () => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('orders_channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: user.isCook ? `cook_id=eq.${user.id}` : `customer_id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('Real-time order update:', payload);
-          handleRealTimeUpdate(payload);
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          setRealTimeEnabled(true);
-          console.log('Real-time orders subscription active');
-        }
-      });
+    try {
+      const channel = supabase
+        .channel('orders_channel')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: user.isCook ? `cook_id=eq.${user.id}` : `customer_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Real-time order update:', payload);
+            handleRealTimeUpdate(payload);
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            setRealTimeEnabled(true);
+            console.log('Real-time orders subscription active');
+          }
+        });
+    } catch (error) {
+      console.error('Error setting up real-time subscription:', error);
+    }
   };
 
   const handleRealTimeUpdate = (payload: any) => {
@@ -139,8 +139,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         .select(`
           *,
           order_items(*),
-          customer:profiles!orders_customer_id_fkey(name),
-          cook:profiles!orders_cook_id_fkey(name)
+          customer:profiles!orders_customer_id_fkey(name, phone),
+          cook:profiles!orders_cook_id_fkey(name, phone)
         `);
 
       // Filter based on user type
@@ -154,6 +154,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       if (error) {
         console.error('Error loading orders:', error);
+        // Fall back to AsyncStorage if Supabase fails
+        await loadOrdersFromStorage();
         return;
       }
 
@@ -173,7 +175,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           })),
           cookName: orderData.cook?.name || 'Unknown Cook',
           customerName: orderData.customer?.name || 'Unknown Customer',
-          customerPhone: '+1234567890', // You might want to add this to profiles
+          customerPhone: orderData.customer?.phone || '+1234567890',
           totalPrice: parseFloat(orderData.total_amount),
           quantity: orderData.order_items.reduce((sum: number, item: any) => sum + item.quantity, 0),
           status: orderData.status,
@@ -185,11 +187,38 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }));
 
         setOrders(formattedOrders);
+        // Also save to AsyncStorage as backup
+        await AsyncStorage.setItem('orderHistory', JSON.stringify(formattedOrders));
       }
     } catch (error) {
       console.error('Error loading orders:', error);
+      // Fall back to AsyncStorage
+      await loadOrdersFromStorage();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadOrdersFromStorage = async () => {
+    try {
+      const storedOrders = await AsyncStorage.getItem('orderHistory');
+      if (storedOrders) {
+        const allOrders = JSON.parse(storedOrders);
+        // Filter orders based on user type
+        let filteredOrders = allOrders;
+        if (user?.isCook) {
+          filteredOrders = allOrders.filter((order: Order) => 
+            order.cookId === user.id || order.cookName === user.name
+          );
+        } else if (user) {
+          filteredOrders = allOrders.filter((order: Order) => 
+            order.customerName === user.name
+          );
+        }
+        setOrders(filteredOrders);
+      }
+    } catch (error) {
+      console.error('Error loading orders from storage:', error);
     }
   };
 
@@ -206,49 +235,86 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       if (!user) throw new Error('User not authenticated');
 
+      console.log('Creating order with data:', orderData);
+
       // Generate tracking number
       const trackingNumber = `HF${Date.now().toString().slice(-8)}`;
 
-      // Create order in database
-      const { data: newOrder, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          tracking_number: trackingNumber,
-          customer_id: user.id,
-          cook_id: orderData.cookId,
-          total_amount: orderData.totalPrice,
-          delivery_address: orderData.deliveryAddress,
-          delivery_instructions: orderData.deliveryInstructions,
-          estimated_delivery_time: orderData.deliveryTime,
-          status: 'confirmed',
-        })
-        .select()
-        .single();
+      // First, try to create in Supabase
+      try {
+        const { data: newOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            tracking_number: trackingNumber,
+            customer_id: user.id,
+            cook_id: orderData.cookId,
+            total_amount: orderData.totalPrice,
+            delivery_address: orderData.deliveryAddress,
+            delivery_instructions: orderData.deliveryInstructions,
+            estimated_delivery_time: orderData.deliveryTime,
+            status: 'confirmed',
+          })
+          .select()
+          .single();
 
-      if (orderError || !newOrder) {
-        throw new Error('Failed to create order');
+        if (orderError) {
+          console.error('Supabase order creation error:', orderError);
+          throw orderError;
+        }
+
+        if (!newOrder) {
+          throw new Error('No order returned from Supabase');
+        }
+
+        // Create order items in Supabase
+        const orderItems = orderData.items.map(item => ({
+          order_id: newOrder.id,
+          food_id: item.id,
+          food_title: item.title,
+          price: item.price,
+          quantity: item.quantity,
+          special_instructions: item.specialInstructions,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('order_items')
+          .insert(orderItems);
+
+        if (itemsError) {
+          console.error('Supabase order items creation error:', itemsError);
+          // Try to delete the order if items failed
+          await supabase.from('orders').delete().eq('id', newOrder.id);
+          throw itemsError;
+        }
+
+        console.log('Order created successfully in Supabase:', newOrder.id);
+        await loadOrders(); // Refresh orders
+        return newOrder.id;
+
+      } catch (supabaseError) {
+        console.error('Supabase order creation failed, falling back to AsyncStorage:', supabaseError);
+        
+        // Fallback to AsyncStorage
+        const orderId = `local-${Date.now()}`;
+        const newOrder: Order = {
+          ...orderData,
+          orderId,
+          trackingNumber,
+          orderDate: new Date().toISOString(),
+        };
+
+        // Save to AsyncStorage
+        const storedOrders = await AsyncStorage.getItem('orderHistory');
+        const allOrders = storedOrders ? JSON.parse(storedOrders) : [];
+        allOrders.push(newOrder);
+        await AsyncStorage.setItem('orderHistory', JSON.stringify(allOrders));
+        
+        // Update local state
+        setOrders(prev => [newOrder, ...prev]);
+        
+        console.log('Order saved to AsyncStorage:', orderId);
+        return orderId;
       }
-
-      // Create order items
-      const orderItems = orderData.items.map(item => ({
-        order_id: newOrder.id,
-        food_id: item.id,
-        food_title: item.title,
-        price: item.price,
-        quantity: item.quantity,
-        special_instructions: item.specialInstructions,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        throw new Error('Failed to create order items');
-      }
-
-      await loadOrders(); // Refresh orders
-      return newOrder.id;
     } catch (error) {
       console.error('Error creating order:', error);
       throw error;
@@ -257,6 +323,7 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
+      // First try Supabase
       const { error } = await supabase
         .from('orders')
         .update({ 
@@ -266,7 +333,16 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         .eq('id', orderId);
 
       if (error) {
-        throw new Error('Failed to update order status');
+        console.error('Supabase status update error:', error);
+        // Fall back to AsyncStorage
+        const storedOrders = await AsyncStorage.getItem('orderHistory');
+        if (storedOrders) {
+          const allOrders = JSON.parse(storedOrders);
+          const updatedOrders = allOrders.map((order: Order) =>
+            order.orderId === orderId ? { ...order, status } : order
+          );
+          await AsyncStorage.setItem('orderHistory', JSON.stringify(updatedOrders));
+        }
       }
 
       // Update local state immediately for better UX
@@ -275,6 +351,8 @@ export const OrderProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           order.orderId === orderId ? { ...order, status } : order
         )
       );
+
+      console.log('Order status updated successfully:', orderId, status);
     } catch (error) {
       console.error('Error updating order status:', error);
       throw error;
