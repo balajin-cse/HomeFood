@@ -32,11 +32,7 @@ class OpenStreetMapService {
     try {
       const url = `${this.baseUrl}/search?format=json&q=${encodeURIComponent(address)}&limit=5&addressdetails=1`;
       
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': this.userAgent,
-        },
-      });
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -63,11 +59,7 @@ class OpenStreetMapService {
     try {
       const url = `${this.baseUrl}/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`;
       
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': this.userAgent,
-        },
-      });
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -105,11 +97,7 @@ class OpenStreetMapService {
       const bbox = this.calculateBoundingBox(latitude, longitude, radius);
       const url = `${this.baseUrl}/search?format=json&q=${encodeURIComponent(query)}&viewbox=${bbox}&bounded=1&limit=10&addressdetails=1`;
       
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': this.userAgent,
-        },
-      });
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
