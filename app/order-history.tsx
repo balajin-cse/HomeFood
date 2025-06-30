@@ -16,8 +16,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrders } from '@/contexts/OrderContext';
+import { useCart } from '@/contexts/CartContext';
 import { theme } from '@/constants/theme';
 import { format } from 'date-fns';
+import { useLocalSearchParams, Link } from 'expo-router';
+import { Alert, Modal, Image, ActivityIndicator, X } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OrderHistoryItem {
@@ -40,8 +43,10 @@ interface Review {
 }
 
 export default function OrderHistoryScreen() {
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const { orders, refreshOrders, refreshing } = useOrders();
+  const { addToCart } = useCart();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderHistoryItem | null>(null);
@@ -52,6 +57,20 @@ export default function OrderHistoryScreen() {
   // Load saved reviews on mount
   useEffect(() => {
     loadReviews();
+    
+    // Check if we need to highlight an order for rating
+    if (params.highlightOrderId && params.action === 'rate') {
+      const orderToHighlight = completedOrders.find(
+        order => order.id === params.highlightOrderId
+      );
+      
+      if (orderToHighlight && orderToHighlight.status === 'delivered') {
+        // Only open review modal for delivered orders
+        setTimeout(() => {
+          handleWriteReview(orderToHighlight);
+        }, 500); // Small delay to ensure component is fully mounted
+      }
+    }
   }, []);
   
   const loadReviews = async () => {
@@ -109,20 +128,38 @@ export default function OrderHistoryScreen() {
   const handleOrderAgain = (order: OrderHistoryItem) => {
     if (!order.originalItems || order.originalItems.length === 0) {
       Alert.alert('Error', 'Could not find the original order items.');
-      return; 
+      return;
     }
-
-    Alert.alert(
-      'Order Again',
-      'Would you like to order these items again?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Yes, Order Again',
-          onPress: () => {
-            // Navigate to cart with these items
-            router.push('/(tabs)/cart');
-            Alert.alert('Added to Cart', 'Your previous order items have been added to cart');
+    
+    try {
+      // Add each item back to cart
+      order.originalItems.forEach(item => {
+        addToCart(
+          {
+            foodId: item.id,
+            title: item.title,
+            description: '',
+            price: item.price,
+            image: item.image || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+            cookId: order.cookId,
+            cookName: order.cookName,
+          },
+          item.quantity,
+          item.specialInstructions
+        );
+      });
+      
+      Alert.alert(
+        'Added to Cart',
+        'The items from this order have been added to your cart.',
+        [
+          { text: 'Continue Shopping', style: 'cancel' },
+          { text: 'Go to Cart', onPress: () => router.push('/(tabs)/cart') }
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding items to cart:', error);
+      Alert.alert('Error', 'There was a problem adding these items to your cart.');
           }
         }
       ]

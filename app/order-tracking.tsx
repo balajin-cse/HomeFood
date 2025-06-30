@@ -211,15 +211,17 @@ export default function OrderTrackingScreen() {
   };
 
   const handleContactCook = () => {
-    Alert.alert(
-      'Contact Cook',
-      `Would you like to call ${orderDetails?.cookName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => console.log('Calling cook...') },
-        { text: 'Message', onPress: () => console.log('Opening chat...') },
-      ]
-    );
+    if (orderDetails?.cookName) {
+      Alert.alert(
+        'Contact Cook',
+        `Would you like to call ${orderDetails.cookName}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Call', onPress: () => console.log('Calling cook...') },
+          { text: 'Message', onPress: () => console.log('Opening chat...') },
+        ]
+      );
+    }
   };
 
   const handleReportIssue = () => {
@@ -480,7 +482,16 @@ export default function OrderTrackingScreen() {
           <Button
             title={orderDetails.status === 'delivered' ? 'Rate Order' : 'Report an Issue'}
             variant="outline"
-            onPress={orderDetails.status === 'delivered' ? () => router.replace('/order-history') : handleReportIssue}
+            onPress={orderDetails.status === 'delivered' ? () => {
+              // Navigate to order history with this specific order ID
+              router.push({
+                pathname: '/order-history',
+                params: {
+                  highlightOrderId: orderDetails.id,
+                  action: 'rate'
+                }
+              });
+            } : handleReportIssue}
             style={styles.actionButton}
           />
           {
