@@ -8,8 +8,9 @@ import {
   Alert,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
-import { Avatar, Card, List, Switch, Button, Image } from 'react-native-paper';
+import { Avatar, Card, List, Switch, Button } from 'react-native-paper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
