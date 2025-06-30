@@ -9,9 +9,24 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChefHat, Package, Plus, X, Clock, CircleCheck as CheckCircle, Truck, DollarSign } from 'lucide-react-native';
+import { 
+  ChefHat, 
+  Package, 
+  Plus, 
+  X, 
+  Clock, 
+  DollarSign, 
+  Star, 
+  MapPin, 
+  Award,
+  Users,
+  Filter,
+  Search
+} from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../constants/theme';
@@ -47,13 +62,33 @@ interface OrderItem {
   quantity: number;
 }
 
+interface CookProfile {
+  id: string;
+  name: string;
+  email: string;
+  profile_image: string | null;
+  address: string | null;
+  phone: string | null;
+  created_at: string;
+  menu_count?: number;
+  avg_rating?: number;
+  total_orders?: number;
+  specialties?: string[];
+  is_online?: boolean;
+}
+
 export default function CookScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [cooks, setCooks] = useState<CookProfile[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [selectedCook, setSelectedCook] = useState<CookProfile | null>(null);
+  const [showCookModal, setShowCookModal] = useState(false);
   const [newItem, setNewItem] = useState({
     title: '',
     description: '',
@@ -67,9 +102,39 @@ export default function CookScreen() {
       loadMenuItems();
       loadOrders();
     } else {
-      setLoading(false);
+      loadCooks();
     }
   }, [user]);
+
+  const loadCooks = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('is_cook', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Enhance cook profiles with mock data for better demo
+      const enhancedCooks = (data || []).map((cook, index) => ({
+        ...cook,
+        profile_image: cook.profile_image || `https://images.pexels.com/photos/${1239291 + index}/pexels-photo-${1239291 + index}.jpeg?auto=compress&cs=tinysrgb&w=200&h=200&fit=crop`,
+        menu_count: Math.floor(Math.random() * 15) + 3,
+        avg_rating: 4.2 + Math.random() * 0.7,
+        total_orders: Math.floor(Math.random() * 500) + 50,
+        specialties: ['Italian', 'Mexican', 'Asian', 'American', 'Mediterranean', 'Indian'].slice(0, Math.floor(Math.random() * 3) + 1),
+        is_online: Math.random() > 0.3,
+      }));
+
+      setCooks(enhancedCooks);
+    } catch (error) {
+      console.error('Error loading cooks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadMenuItems = async () => {
     if (!user) return;
@@ -189,12 +254,28 @@ export default function CookScreen() {
 
       if (error) throw error;
       // The user context will be updated automatically
-      // Force a re-render by updating a dummy state or reload the user data
     } catch (error) {
       console.error('Error becoming cook:', error);
       Alert.alert('Error', 'Failed to register as cook');
     }
   };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (user?.is_cook) {
+      await Promise.all([loadMenuItems(), loadOrders()]);
+    } else {
+      await loadCooks();
+    }
+    setRefreshing(false);
+  };
+
+  const filteredCooks = cooks.filter(cook => 
+    cook.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (cook.specialties && cook.specialties.some(specialty => 
+      specialty.toLowerCase().includes(searchQuery.toLowerCase())
+    ))
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -220,6 +301,17 @@ export default function CookScreen() {
     }
   };
 
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        size={12}
+        color={index < Math.floor(rating) ? '#FFD700' : '#E0E0E0'}
+        fill={index < Math.floor(rating) ? '#FFD700' : 'transparent'}
+      />
+    ));
+  };
+
   if (loading || !user) {
     return (
       <SafeAreaView style={styles.container}>
@@ -230,28 +322,223 @@ export default function CookScreen() {
     );
   }
 
+  // Customer Interface - Browse Cooks
   if (!user.is_cook) {
     return (
       <SafeAreaView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.becomeCookContainer}>
-          <View style={styles.becomeCookCard}>
-            <ChefHat size={64} color={theme.colors.primary} />
-            <Text style={styles.becomeCookTitle}>Become a Cook</Text>
-            <Text style={styles.becomeCookText}>
-              Start your culinary journey and share your delicious homemade meals with your community.
-            </Text>
-            <TouchableOpacity style={styles.becomeCookButton} onPress={becomeCook}>
-              <Text style={styles.becomeCookButtonText}>Register as Cook</Text>
+        <View style={styles.customerHeader}>
+          <Text style={styles.customerHeaderTitle}>Discover Amazing Cooks</Text>
+          <Text style={styles.customerHeaderSubtitle}>
+            Find talented home cooks near you
+          </Text>
+          
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <Search size={20} color={theme.colors.onSurfaceVariant} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search cooks or cuisines..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            <TouchableOpacity style={styles.filterButton}>
+              <Filter size={20} color={theme.colors.primary} />
             </TouchableOpacity>
           </View>
+        </View>
+
+        <ScrollView 
+          style={styles.cooksContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {filteredCooks.length === 0 ? (
+            <View style={styles.emptyState}>
+              <ChefHat size={64} color={theme.colors.onSurfaceVariant} />
+              <Text style={styles.emptyStateTitle}>No Cooks Found</Text>
+              <Text style={styles.emptyStateText}>
+                {searchQuery ? 'Try adjusting your search' : 'Be the first to become a cook!'}
+              </Text>
+              {!searchQuery && (
+                <TouchableOpacity style={styles.becomeCookButton} onPress={becomeCook}>
+                  <Text style={styles.becomeCookButtonText}>Become a Cook</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <>
+              <View style={styles.cooksHeader}>
+                <Text style={styles.cooksCount}>
+                  {filteredCooks.length} cook{filteredCooks.length !== 1 ? 's' : ''} found
+                </Text>
+                <TouchableOpacity style={styles.becomeCookLink} onPress={becomeCook}>
+                  <ChefHat size={16} color={theme.colors.primary} />
+                  <Text style={styles.becomeCookLinkText}>Become a Cook</Text>
+                </TouchableOpacity>
+              </View>
+
+              {filteredCooks.map((cook) => (
+                <TouchableOpacity
+                  key={cook.id}
+                  style={styles.cookCard}
+                  onPress={() => {
+                    setSelectedCook(cook);
+                    setShowCookModal(true);
+                  }}
+                  activeOpacity={0.9}
+                >
+                  <View style={styles.cookCardHeader}>
+                    <View style={styles.cookAvatarContainer}>
+                      <Image source={{ uri: cook.profile_image || '' }} style={styles.cookAvatar} />
+                      <View style={[
+                        styles.onlineIndicator,
+                        { backgroundColor: cook.is_online ? '#34C759' : '#8E8E93' }
+                      ]} />
+                    </View>
+                    
+                    <View style={styles.cookInfo}>
+                      <View style={styles.cookNameRow}>
+                        <Text style={styles.cookName}>{cook.name}</Text>
+                        <Award size={16} color={theme.colors.primary} />
+                      </View>
+                      
+                      <View style={styles.ratingContainer}>
+                        <View style={styles.stars}>
+                          {renderStars(cook.avg_rating || 4.5)}
+                        </View>
+                        <Text style={styles.ratingText}>
+                          {(cook.avg_rating || 4.5).toFixed(1)} ({cook.total_orders || 0} orders)
+                        </Text>
+                      </View>
+                      
+                      <Text style={styles.cookLocation}>
+                        <MapPin size={12} color={theme.colors.onSurfaceVariant} />
+                        {cook.address || 'San Francisco, CA'} • {(Math.random() * 3 + 0.5).toFixed(1)}km away
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.cookSpecialties}>
+                    {(cook.specialties || []).map((specialty, index) => (
+                      <View key={index} style={styles.specialtyTag}>
+                        <Text style={styles.specialtyText}>{specialty}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.cookStats}>
+                    <View style={styles.cookStat}>
+                      <Text style={styles.statNumber}>{cook.menu_count || 0}</Text>
+                      <Text style={styles.statLabel}>dishes</Text>
+                    </View>
+                    <View style={styles.cookStat}>
+                      <Text style={styles.statNumber}>{Math.floor(Math.random() * 30 + 15)}</Text>
+                      <Text style={styles.statLabel}>min</Text>
+                    </View>
+                    <View style={styles.cookStat}>
+                      <Text style={styles.statNumber}>${Math.floor(Math.random() * 10 + 12)}</Text>
+                      <Text style={styles.statLabel}>avg</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
         </ScrollView>
+
+        {/* Cook Detail Modal */}
+        <Modal
+          visible={showCookModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowCookModal(false)}
+        >
+          <SafeAreaView style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Cook Profile</Text>
+              <TouchableOpacity 
+                onPress={() => setShowCookModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <X size={24} color={theme.colors.onSurface} />
+              </TouchableOpacity>
+            </View>
+
+            {selectedCook && (
+              <ScrollView style={styles.modalContent}>
+                <View style={styles.cookDetailHeader}>
+                  <Image source={{ uri: selectedCook.profile_image || '' }} style={styles.cookDetailAvatar} />
+                  <Text style={styles.cookDetailName}>{selectedCook.name}</Text>
+                  
+                  <View style={styles.cookDetailRating}>
+                    <View style={styles.stars}>
+                      {renderStars(selectedCook.avg_rating || 4.5)}
+                    </View>
+                    <Text style={styles.ratingText}>
+                      {(selectedCook.avg_rating || 4.5).toFixed(1)} • {selectedCook.total_orders || 0} orders completed
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.cookDetailStats}>
+                  <View style={styles.detailStatCard}>
+                    <Users size={24} color={theme.colors.primary} />
+                    <Text style={styles.detailStatValue}>{selectedCook.total_orders || 0}</Text>
+                    <Text style={styles.detailStatLabel}>Happy Customers</Text>
+                  </View>
+                  <View style={styles.detailStatCard}>
+                    <ChefHat size={24} color={theme.colors.primary} />
+                    <Text style={styles.detailStatValue}>{selectedCook.menu_count || 0}</Text>
+                    <Text style={styles.detailStatLabel}>Dishes Available</Text>
+                  </View>
+                  <View style={styles.detailStatCard}>
+                    <Clock size={24} color={theme.colors.primary} />
+                    <Text style={styles.detailStatValue}>{Math.floor(Math.random() * 10 + 15)}</Text>
+                    <Text style={styles.detailStatLabel}>Avg Prep Time</Text>
+                  </View>
+                </View>
+
+                <View style={styles.cookDetailSection}>
+                  <Text style={styles.sectionTitle}>Specialties</Text>
+                  <View style={styles.specialtiesGrid}>
+                    {(selectedCook.specialties || []).map((specialty, index) => (
+                      <View key={index} style={styles.specialtyTag}>
+                        <Text style={styles.specialtyText}>{specialty}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.cookDetailSection}>
+                  <Text style={styles.sectionTitle}>About</Text>
+                  <Text style={styles.aboutText}>
+                    Passionate home cook with {Math.floor(Math.random() * 5 + 2)} years of experience. 
+                    I love creating delicious, authentic dishes that bring people together. 
+                    All my ingredients are fresh and locally sourced when possible.
+                  </Text>
+                </View>
+
+                <TouchableOpacity style={styles.viewMenuButton}>
+                  <Text style={styles.viewMenuButtonText}>View Menu</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
+          </SafeAreaView>
+        </Modal>
       </SafeAreaView>
     );
   }
 
+  // Cook Interface (existing code)
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Cook Dashboard</Text>
           <TouchableOpacity 
@@ -498,6 +785,251 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  // Customer Interface Styles
+  customerHeader: {
+    backgroundColor: 'white',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  customerHeaderTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: theme.colors.onSurface,
+    marginBottom: 4,
+  },
+  customerHeaderSubtitle: {
+    fontSize: 16,
+    color: theme.colors.onSurfaceVariant,
+    marginBottom: 20,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: theme.colors.onSurface,
+  },
+  filterButton: {
+    padding: 4,
+  },
+  cooksContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  cooksHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  cooksCount: {
+    fontSize: 16,
+    color: theme.colors.onSurfaceVariant,
+    fontWeight: '500',
+  },
+  becomeCookLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  becomeCookLinkText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  cookCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  cookCardHeader: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  cookAvatarContainer: {
+    position: 'relative',
+    marginRight: 16,
+  },
+  cookAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#f0f0f0',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  cookInfo: {
+    flex: 1,
+  },
+  cookNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  cookName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.onSurface,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  stars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  ratingText: {
+    fontSize: 14,
+    color: theme.colors.onSurfaceVariant,
+  },
+  cookLocation: {
+    fontSize: 14,
+    color: theme.colors.onSurfaceVariant,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cookSpecialties: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  specialtyTag: {
+    backgroundColor: '#f0f4ff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  specialtyText: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  cookStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  cookStat: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.onSurface,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: theme.colors.onSurfaceVariant,
+    marginTop: 2,
+  },
+  // Cook Detail Modal Styles
+  cookDetailHeader: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    marginBottom: 24,
+  },
+  cookDetailAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 16,
+  },
+  cookDetailName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: theme.colors.onSurface,
+    marginBottom: 8,
+  },
+  cookDetailRating: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  cookDetailStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 32,
+  },
+  detailStatCard: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  detailStatValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.onSurface,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  detailStatLabel: {
+    fontSize: 12,
+    color: theme.colors.onSurfaceVariant,
+    textAlign: 'center',
+  },
+  cookDetailSection: {
+    marginBottom: 24,
+  },
+  specialtiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  aboutText: {
+    fontSize: 16,
+    color: theme.colors.onSurfaceVariant,
+    lineHeight: 24,
+  },
+  viewMenuButton: {
+    backgroundColor: theme.colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  viewMenuButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  // Existing Cook Interface Styles
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -595,6 +1127,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
+  becomeCookButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  becomeCookButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   menuItemCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -632,47 +1176,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'white',
     fontWeight: '600',
-  },
-  becomeCookContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  becomeCookCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 32,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  becomeCookTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.onSurface,
-    marginTop: 16,
-  },
-  becomeCookText: {
-    fontSize: 16,
-    color: theme.colors.onSurfaceVariant,
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 24,
-  },
-  becomeCookButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 24,
-  },
-  becomeCookButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   modalContainer: {
     flex: 1,
