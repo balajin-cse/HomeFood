@@ -50,7 +50,6 @@ interface OrderItem {
 export default function CookScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [isCook, setIsCook] = useState(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -64,34 +63,13 @@ export default function CookScreen() {
   });
 
   useEffect(() => {
-    checkCookStatus();
-  }, [user]);
-
-  useEffect(() => {
-    if (isCook) {
+    if (user?.is_cook) {
       loadMenuItems();
       loadOrders();
-    }
-  }, [isCook]);
-
-  const checkCookStatus = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('is_cook')
-        .eq('id', user.id)
-        .single();
-
-      if (error) throw error;
-      setIsCook(data?.is_cook || false);
-    } catch (error) {
-      console.error('Error checking cook status:', error);
-    } finally {
+    } else {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   const loadMenuItems = async () => {
     if (!user) return;
@@ -107,6 +85,8 @@ export default function CookScreen() {
       setMenuItems(data || []);
     } catch (error) {
       console.error('Error loading menu items:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -143,6 +123,8 @@ export default function CookScreen() {
       setOrders(ordersWithItems);
     } catch (error) {
       console.error('Error loading orders:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -206,7 +188,8 @@ export default function CookScreen() {
         .eq('id', user.id);
 
       if (error) throw error;
-      setIsCook(true);
+      // The user context will be updated automatically
+      // Force a re-render by updating a dummy state or reload the user data
     } catch (error) {
       console.error('Error becoming cook:', error);
       Alert.alert('Error', 'Failed to register as cook');
@@ -237,7 +220,7 @@ export default function CookScreen() {
     }
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -247,7 +230,7 @@ export default function CookScreen() {
     );
   }
 
-  if (!isCook) {
+  if (!user.is_cook) {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.becomeCookContainer}>
