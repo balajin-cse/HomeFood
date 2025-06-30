@@ -14,10 +14,6 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.homefood.app"
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=512&h=512&fit=crop",
