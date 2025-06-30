@@ -7,7 +7,10 @@
     "dev": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:web": "npx expo export:web",
+    "deploy": "npm run build:web && netlify deploy",
+    "deploy:prod": "npm run build:web && netlify deploy --prod"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
@@ -42,7 +45,8 @@
     "@types/react": "~18.2.79",
     "@types/react-native": "~0.73.0",
     "babel-plugin-module-resolver": "^5.0.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "netlify-cli": "^17.19.3"
   },
   "private": true
 }

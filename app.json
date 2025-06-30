@@ -27,7 +27,8 @@
     },
     "web": {
       "favicon": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=32&h=32&fit=crop",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
       "expo-router",
@@ -39,5 +40,10 @@
       ]
     ],
     "scheme": "homefood"
+  },
+  "extra": {
+    "eas": {
+      "projectId": "homefood-web-app"
+    }
   }
 }
