@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { ArrowLeft, Clock, Star, RotateCcw } from 'lucide-react-native';
+import { ArrowLeft, Clock, Star, RotateCcw, X } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -20,7 +21,7 @@ import { useCart } from '@/contexts/CartContext';
 import { theme } from '@/constants/theme';
 import { format } from 'date-fns';
 import { useLocalSearchParams, Link } from 'expo-router';
-import { Alert, Modal, Image, ActivityIndicator, X } from 'react-native';
+import { Alert, Modal, Image, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface OrderHistoryItem {
@@ -96,7 +97,6 @@ export default function OrderHistoryScreen() {
       status: order.status as 'delivered' | 'cancelled',
       originalOrderId: order.orderId,
       originalItems: order.items,
-      cookId: order.cookId,
       cookId: order.cookId,
       hasReview: false, // TODO: Implement review tracking
       orderDate: order.orderDate,
