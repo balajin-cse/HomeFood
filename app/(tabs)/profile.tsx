@@ -226,8 +226,8 @@ function CookProfileInterface() {
       <View style={styles.footer}>
         <Text style={styles.version}>HomeFood Cook v1.0.0</Text>
         <View style={styles.badgesContainer}>
-          <Image 
-            source={{ uri: "https://github.com/kickiniteasy/bolt-hackathon-badge/blob/main/src/public/bolt-badge/black_circle_360x360/black_circle_360x360.png" }} 
+          <Image
+            source={{ uri: "https://raw.githubusercontent.com/kickiniteasy/bolt-hackathon-badge/main/src/public/bolt-badge/black_circle_360x360/black_circle_360x360.png" }}
             style={styles.badgeImage}
             resizeMode="contain"
           />
@@ -543,7 +543,7 @@ function CustomerProfileInterface() {
         <Text style={styles.version}>HomeFood v1.0.0</Text>
         <View style={styles.badgesContainer}>
           <Image 
-            source={{ uri: "https://github.com/kickiniteasy/bolt-hackathon-badge/blob/main/src/public/bolt-badge/black_circle_360x360/black_circle_360x360.png" }} 
+            source={{ uri: "https://raw.githubusercontent.com/kickiniteasy/bolt-hackathon-badge/main/src/public/bolt-badge/black_circle_360x360/black_circle_360x360.png" }}
             style={styles.badgeImage}
             resizeMode="contain"
           />
