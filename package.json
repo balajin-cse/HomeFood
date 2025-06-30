@@ -8,10 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web", 
-    "build:web": "npx expo export:web",
+    "build:web": "npx expo export --platform web",
     "deploy": "npm run build:web && netlify deploy",
     "deploy:prod": "npm run build:web && netlify deploy --prod",
-    "web:build": "npx expo export:web"
+    "web:build": "npx expo export --platform web"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
