@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
-import { X, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, MessageCircle, LogIn, LogOut, ChefHat, TrendingUp, DollarSign } from 'lucide-react-native';
+import { X, TriangleAlert as AlertTriangle, Clock, CircleCheck as CheckCircle, MessageCircle, LogIn, LogOut, ChefHat, TrendingUp, DollarSign, Package, Truck, User, HelpCircle, FileText } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ReportedIssue {
@@ -86,39 +86,6 @@ function CookProfileInterface() {
   const activeOrders = orders.filter(order => 
     ['confirmed', 'preparing', 'ready', 'picked_up'].includes(order.status)
   ).length;
-
-  const cookMenuItems = [
-    {
-      title: 'Kitchen Management',
-      icon: 'chef-hat',
-      onPress: () => router.push('/(tabs)'),
-    },
-    {
-      title: 'Order Management',
-      icon: 'package-variant',
-      onPress: () => router.push('/(tabs)/orders'),
-    },
-    {
-      title: 'Delivery Management',
-      icon: 'truck-delivery',
-      onPress: () => router.push('/(tabs)/delivery'),
-    },
-    {
-      title: 'Edit Profile',
-      icon: 'account-edit',
-      onPress: () => router.push('/edit-profile'),
-    },
-    {
-      title: 'Help & Support',
-      icon: 'help-circle',
-      onPress: () => router.push('/help-support'),
-    },
-    {
-      title: 'Terms & Privacy',
-      icon: 'file-document',
-      onPress: () => router.push('/terms-privacy'),
-    },
-  ];
 
   return (
     <ScrollView style={styles.container}>
@@ -203,15 +170,47 @@ function CookProfileInterface() {
             )}
           />
 
-          {cookMenuItems.map((item, index) => (
-            <List.Item
-              key={index}
-              title={item.title}
-              left={props => <List.Icon {...props} icon={item.icon} />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={item.onPress}
-            />
-          ))}
+          <List.Item
+            title="Kitchen Management"
+            left={() => <ChefHat size={24} color={theme.colors.onSurfaceVariant} />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/(tabs)')}
+          />
+
+          <List.Item
+            title="Order Management"
+            left={() => <Package size={24} color={theme.colors.onSurfaceVariant} />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/(tabs)/orders')}
+          />
+
+          <List.Item
+            title="Delivery Management"
+            left={() => <Truck size={24} color={theme.colors.onSurfaceVariant} />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/(tabs)/delivery')}
+          />
+
+          <List.Item
+            title="Edit Profile"
+            left={() => <User size={24} color={theme.colors.onSurfaceVariant} />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/edit-profile')}
+          />
+
+          <List.Item
+            title="Help & Support"
+            left={() => <HelpCircle size={24} color={theme.colors.onSurfaceVariant} />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/help-support')}
+          />
+
+          <List.Item
+            title="Terms & Privacy"
+            left={() => <FileText size={24} color={theme.colors.onSurfaceVariant} />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/terms-privacy')}
+          />
         </List.Section>
       </Card>
 
