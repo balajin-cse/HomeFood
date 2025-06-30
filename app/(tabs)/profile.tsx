@@ -217,7 +217,6 @@ function CookProfileInterface() {
       {/* Logout */}
       <Card style={styles.authCard}>
         <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
-        <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
           <LogOut size={20} color={theme.colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
