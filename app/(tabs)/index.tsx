@@ -396,7 +396,7 @@ export default function DiscoverScreen() {
       isVerified: true,
       badges: ['Authentic Recipes', 'Family Tradition'],
       joinedDate: '2019-08-05',
-      bio: 'I grew up cooking in my family's restaurant in Athens. All my recipes have been passed down through generations, bringing authentic Greek flavors to your table.',
+      bio: 'I grew up cooking in my family\'s restaurant in Athens. All my recipes have been passed down through generations, bringing authentic Greek flavors to your table.',
       location: 'Castro, SF',
       distance: 2.5,
     },
