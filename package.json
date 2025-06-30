@@ -7,7 +7,7 @@
     "dev": "expo start",
     "android": "expo start --android",
     "web": "expo start --web",
-    "build": "expo export"
+    "build": "expo export --platform web"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
