@@ -160,10 +160,7 @@ export default function OrderHistoryScreen() {
     } catch (error) {
       console.error('Error adding items to cart:', error);
       Alert.alert('Error', 'There was a problem adding these items to your cart.');
-          }
-        }
-      ]
-    );
+    }
   };
   
   const handleWriteReview = (order: OrderHistoryItem) => {
