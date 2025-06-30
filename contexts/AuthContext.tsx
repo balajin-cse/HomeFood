@@ -60,6 +60,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.error('❌ Error checking session:', error);
+        
+        // Handle invalid refresh token error
+        if (error instanceof Error && error.message === 'SUPABASE_AUTH_REFRESH_TOKEN_INVALID') {
+          console.warn('🔄 Invalid refresh token detected during initialization, clearing session');
+          await logout();
+        }
       } finally {
         if (mounted) {
           setLoading(false);
@@ -326,6 +332,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: false, error: 'Login failed - no user returned' };
     } catch (error: any) {
       console.error('❌ Login exception:', error);
+      
+      // Handle invalid refresh token error
+      if (error instanceof Error && error.message === 'SUPABASE_AUTH_REFRESH_TOKEN_INVALID') {
+        console.warn('🔄 Invalid refresh token detected during login, clearing session');
+        await logout();
+        return { success: false, error: 'Your session has expired. Please try logging in again.' };
+      }
+      
       return { success: false, error: error.message || 'An unexpected error occurred during login' };
     }
   };

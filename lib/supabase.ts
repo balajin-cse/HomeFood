@@ -91,12 +91,39 @@ export const supabase = (() => {
   console.log('✅ Creating real Supabase client with valid configuration');
   
   try {
+    // Custom fetch function to handle refresh token errors
+    const customFetch = async (url: RequestInfo | URL, options?: RequestInit) => {
+      const response = await fetch(url, options);
+      
+      // Check if this is a refresh token error
+      if (!response.ok && response.status === 400) {
+        try {
+          const errorData = await response.clone().json();
+          if (errorData.code === 'refresh_token_not_found') {
+            console.warn('🔄 Invalid refresh token detected, will clear session');
+            throw new Error('SUPABASE_AUTH_REFRESH_TOKEN_INVALID');
+          }
+        } catch (parseError) {
+          // If we can't parse the error, continue with normal response
+          if (parseError instanceof Error && parseError.message === 'SUPABASE_AUTH_REFRESH_TOKEN_INVALID') {
+            throw parseError;
+          }
+        }
+      }
+      
+      return response;
+    };
+
     const client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         storage: AsyncStorage,
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
+        flowType: 'pkce',
+      },
+      global: {
+        fetch: customFetch,
       },
     });
     
