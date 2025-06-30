@@ -9,7 +9,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
-import { Avatar, Card, List, Switch, Button } from 'react-native-paper';
+import { Avatar, Card, List, Switch, Button, Image } from 'react-native-paper';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { theme } from '@/constants/theme';
@@ -217,6 +217,7 @@ function CookProfileInterface() {
       {/* Logout */}
       <Card style={styles.authCard}>
         <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
+        <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
           <LogOut size={20} color={theme.colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
@@ -224,6 +225,30 @@ function CookProfileInterface() {
 
       <View style={styles.footer}>
         <Text style={styles.version}>HomeFood Cook v1.0.0</Text>
+        <View style={styles.badgesContainer}>
+          <Image 
+            source={{ uri: "https://github.com/kickiniteasy/bolt-hackathon-badge/blob/main/src/public/bolt-badge/black_circle_360x360/black_circle_360x360.png" }} 
+            style={styles.badgeImage}
+            resizeMode="contain"
+          />
+          <View style={styles.partnersContainer}>
+            <Image 
+              source={{ uri: "https://assets.entri.app/logo.svg" }} 
+              style={styles.partnerLogo}
+              resizeMode="contain"
+            />
+            <Image 
+              source={{ uri: "https://www.netlify.com/v3/img/components/logomark.png" }} 
+              style={styles.partnerLogo}
+              resizeMode="contain"
+            />
+            <Image 
+              source={{ uri: "https://supabase.com/favicon/favicon-32x32.png" }} 
+              style={styles.partnerLogo}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -516,6 +541,30 @@ function CustomerProfileInterface() {
 
       <View style={styles.footer}>
         <Text style={styles.version}>HomeFood v1.0.0</Text>
+        <View style={styles.badgesContainer}>
+          <Image 
+            source={{ uri: "https://github.com/kickiniteasy/bolt-hackathon-badge/blob/main/src/public/bolt-badge/black_circle_360x360/black_circle_360x360.png" }} 
+            style={styles.badgeImage}
+            resizeMode="contain"
+          />
+          <View style={styles.partnersContainer}>
+            <Image 
+              source={{ uri: "https://assets.entri.app/logo.svg" }} 
+              style={styles.partnerLogo}
+              resizeMode="contain"
+            />
+            <Image 
+              source={{ uri: "https://www.netlify.com/v3/img/components/logomark.png" }} 
+              style={styles.partnerLogo}
+              resizeMode="contain"
+            />
+            <Image 
+              source={{ uri: "https://supabase.com/favicon/favicon-32x32.png" }} 
+              style={styles.partnerLogo}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
       </View>
 
       {/* Issues Modal */}
@@ -966,12 +1015,31 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     padding: 20,
+    gap: 16,
   },
   version: {
     fontSize: 14,
     color: theme.colors.onSurface,
     opacity: 0.5,
     fontFamily: 'Inter-Regular',
+  },
+  badgesContainer: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  badgeImage: {
+    width: 80,
+    height: 80,
+  },
+  partnersContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partnerLogo: {
+    width: 32,
+    height: 32,
   },
   modalContainer: {
     flex: 1,
