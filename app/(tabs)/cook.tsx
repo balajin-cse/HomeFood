@@ -11,16 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ChefHat, 
-  Package, 
-  Plus, 
-  X, 
-  Clock,
-  CheckCircle,
-  Truck,
-  DollarSign 
-} from 'lucide-react-native';
+import { ChefHat, Package, Plus, X, Clock, CircleCheck as CheckCircle, Truck, DollarSign } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../constants/theme';
