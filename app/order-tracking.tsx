@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useOrders } from '@/contexts/OrderContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
 import { theme } from '@/constants/theme';
 import { format } from 'date-fns';
 
@@ -47,6 +48,7 @@ interface OrderDetails {
 export default function OrderTrackingScreen() {
   const params = useLocalSearchParams();
   const { orders, updateOrderStatus, realTimeEnabled } = useOrders();
+  const { addToCart } = useCart();
   const { user } = useAuth();
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
   const [trackingSteps, setTrackingSteps] = useState<TrackingStep[]>([]);
@@ -269,6 +271,48 @@ export default function OrderTrackingScreen() {
     );
   };
 
+  const handleOrderAgain = () => {
+    if (!orderDetails) return;
+    
+    try {
+      // Get the order from the context
+      const orderFromContext = orders.find(order => order.orderId === orderDetails.id);
+      
+      if (orderFromContext && orderFromContext.items && orderFromContext.items.length > 0) {
+        // Add each item back to cart
+        orderFromContext.items.forEach(item => {
+          addToCart(
+            {
+              foodId: item.id,
+              title: item.title,
+              description: '',
+              price: item.price,
+              image: item.image || 'https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=400',
+              cookId: orderFromContext.cookId,
+              cookName: orderFromContext.cookName,
+            },
+            item.quantity,
+            item.specialInstructions
+          );
+        });
+        
+        Alert.alert(
+          'Added to Cart',
+          'The items from this order have been added to your cart.',
+          [
+            { text: 'Continue Shopping', style: 'cancel' },
+            { text: 'Go to Cart', onPress: () => router.push('/(tabs)/cart') }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Could not find the items from this order.');
+      }
+    } catch (error) {
+      console.error('Error adding items to cart:', error);
+      Alert.alert('Error', 'There was a problem adding these items to your cart.');
+    }
+  };
+
   if (!orderDetails) {
     return (
       <View style={styles.loadingContainer}>
@@ -451,7 +495,7 @@ export default function OrderTrackingScreen() {
             ) : (
               <Button
                 title="Order Again"
-                onPress={() => router.push('/(tabs)')}
+                onPress={handleOrderAgain}
                 style={styles.actionButton}
               />
             )
