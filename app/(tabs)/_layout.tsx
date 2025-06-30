@@ -81,15 +81,6 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="orders"
-          options={{
-            title: 'Orders',
-            tabBarIcon: ({ color, size }) => (
-              <Package color={color} size={size} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="delivery"
           options={{
             title: 'Delivery',
@@ -118,6 +109,12 @@ export default function TabLayout() {
           name="cart"
           options={{
             href: null, // Hide this tab
+          }}
+        />
+        <Tabs.Screen
+          name="orders"
+          options={{
+            href: null, // Hide this tab for cooks
           }}
         />
       </Tabs>
