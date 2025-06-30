@@ -177,10 +177,10 @@ function CookProfileInterface() {
           
           <TouchableOpacity 
             style={styles.quickActionButton}
-            onPress={() => router.push('/(tabs)/orders')}
+            onPress={() => router.push('/(tabs)')}
           >
-            <TrendingUp size={24} color={theme.colors.primary} />
-            <Text style={styles.quickActionText}>View Orders</Text>
+            <ChefHat size={24} color={theme.colors.primary} />
+            <Text style={styles.quickActionText}>Kitchen</Text>
           </TouchableOpacity>
         </View>
       </Card>
