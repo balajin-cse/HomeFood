@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=512&h=512&fit=crop",
     "userInterfaceStyle": "light",
+    "jsEngine": "jsc",
     "splash": {
       "image": "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=1080&h=1920&fit=crop",
       "resizeMode": "contain",
