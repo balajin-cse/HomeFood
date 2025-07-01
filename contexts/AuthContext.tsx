@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
   id: string;
@@ -417,7 +418,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (Platform.OS === 'web' && typeof window !== 'undefined') {
           try {
             localStorage.removeItem('supabase.auth.token');
-            console.log('✅ Manually cleared auth token from localStorage');
+            localStorage.removeItem('supabase.auth.expires_at');
+            localStorage.removeItem('supabase.auth.refresh_token');
+            console.log('✅ Manually cleared auth tokens from localStorage');
           } catch (storageError) {
             console.error('❌ Failed to clear localStorage:', storageError);
           }
@@ -430,7 +433,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (Platform.OS !== 'web') {
         try {
           await AsyncStorage.removeItem('supabase.auth.token');
-          console.log('✅ Cleared auth token from AsyncStorage');
+          await AsyncStorage.removeItem('supabase.auth.expires_at');
+          await AsyncStorage.removeItem('supabase.auth.refresh_token');
+          console.log('✅ Cleared auth tokens from AsyncStorage');
         } catch (storageError) {
           console.error('❌ Failed to clear AsyncStorage:', storageError);
         }

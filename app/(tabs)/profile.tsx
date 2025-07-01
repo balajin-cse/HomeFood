@@ -35,6 +35,7 @@ function CookProfileInterface() {
   const [notifications, setNotifications] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     loadCookData();
@@ -72,10 +73,19 @@ function CookProfileInterface() {
           text: 'Logout', 
           onPress: async () => {
             try {
+              setIsLoggingOut(true);
               await logout();
+              
+              // Force navigation to home screen after logout
               router.replace('/(tabs)');
+              
+              // Small delay to ensure state is updated
+              setTimeout(() => {
+                setIsLoggingOut(false);
+              }, 500);
             } catch (error) {
               console.error('Logout error:', error);
+              setIsLoggingOut(false);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           }, 
@@ -228,9 +238,15 @@ function CookProfileInterface() {
 
       {/* Logout */}
       <Card style={styles.authCard}>
-        <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
+        <TouchableOpacity 
+          onPress={handleLogout} 
+          style={styles.authButton}
+          disabled={isLoggingOut}
+        >
           <LogOut size={20} color={theme.colors.error} />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+          </Text>
         </TouchableOpacity>
       </Card>
 
@@ -273,6 +289,7 @@ function CustomerProfileInterface() {
   const [reportedIssues, setReportedIssues] = useState<ReportedIssue[]>([]);
   const [showIssuesModal, setShowIssuesModal] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<ReportedIssue | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     loadReportedIssues();
@@ -299,10 +316,19 @@ function CustomerProfileInterface() {
           text: 'Logout', 
           onPress: async () => {
             try {
+              setIsLoggingOut(true);
               await logout();
+              
+              // Force navigation to home screen after logout
               router.replace('/(tabs)');
+              
+              // Small delay to ensure state is updated
+              setTimeout(() => {
+                setIsLoggingOut(false);
+              }, 500);
             } catch (error) {
               console.error('Logout error:', error);
+              setIsLoggingOut(false);
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           }, 
@@ -550,9 +576,15 @@ function CustomerProfileInterface() {
 
       <Card style={styles.authCard}>
         {user ? (
-          <TouchableOpacity onPress={handleLogout} style={styles.authButton}>
+          <TouchableOpacity 
+            onPress={handleLogout} 
+            style={styles.authButton}
+            disabled={isLoggingOut}
+          >
             <LogOut size={20} color={theme.colors.error} />
-            <Text style={styles.logoutText}>Logout</Text>
+            <Text style={styles.logoutText}>
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
+            </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={handleLogin} style={styles.authButton}>
