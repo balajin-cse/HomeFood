@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -35,19 +36,105 @@ const isValidKey = (key: string | undefined): boolean => {
 // Create a mock client for development when Supabase is not configured
 const createMockClient = () => {
   console.warn('🔧 Using mock Supabase client - authentication will fail');
+  
+  // Storage for mock auth state
+  let mockUser: any = null;
+  let mockSession: any = null;
+  const authListeners: Array<(event: string, session: any) => void> = [];
+  
   return {
     auth: {
-      signInWithPassword: () => Promise.resolve({ 
-        data: { user: null, session: null }, 
-        error: { message: 'Supabase not configured - using mock client', code: 'mock_error' } 
-      }),
-      signUp: () => Promise.resolve({ 
-        data: { user: null, session: null }, 
-        error: { message: 'Supabase not configured - using mock client', code: 'mock_error' } 
-      }),
-      signOut: () => Promise.resolve({ error: null }),
-      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async ({ email, password }: { email: string; password: string }) => {
+        console.log('🔐 Mock sign in attempt:', email);
+        
+        // Simple mock authentication logic
+        if ((email === 'bala@example.com' && password === 'pass123') || 
+            (email.includes('ck-') && password === 'cookpass')) {
+          
+          mockUser = {
+            id: `mock-${Date.now()}`,
+            email,
+            user_metadata: {
+              name: email === 'bala@example.com' ? 'Bala' : 'Cook Name',
+              is_cook: email.includes('ck-')
+            }
+          };
+          
+          mockSession = {
+            user: mockUser,
+            access_token: 'mock-token'
+          };
+          
+          // Notify listeners
+          setTimeout(() => {
+            authListeners.forEach(listener => listener('SIGNED_IN', mockSession));
+          }, 100);
+          
+          return { data: { user: mockUser, session: mockSession }, error: null };
+        }
+        
+        return { 
+          data: { user: null, session: null }, 
+          error: { message: 'Invalid login credentials', code: 'mock_error' } 
+        };
+      },
+      
+      signUp: async ({ email, password, options }: any) => {
+        console.log('📝 Mock sign up attempt:', email);
+        
+        mockUser = {
+          id: `mock-${Date.now()}`,
+          email,
+          user_metadata: options?.data || {}
+        };
+        
+        mockSession = {
+          user: mockUser,
+          access_token: 'mock-token'
+        };
+        
+        // Notify listeners
+        setTimeout(() => {
+          authListeners.forEach(listener => listener('SIGNED_IN', mockSession));
+        }, 100);
+        
+        return { data: { user: mockUser, session: mockSession }, error: null };
+      },
+      
+      signOut: async () => {
+        console.log('🚪 Mock sign out');
+        
+        // Clear mock auth state
+        mockUser = null;
+        mockSession = null;
+        
+        // Notify listeners
+        setTimeout(() => {
+          authListeners.forEach(listener => listener('SIGNED_OUT', null));
+        }, 100);
+        
+        return { error: null };
+      },
+      
+      getSession: async () => {
+        return { data: { session: mockSession }, error: null };
+      },
+      
+      onAuthStateChange: (callback: (event: string, session: any) => void) => {
+        authListeners.push(callback);
+        return { 
+          data: { 
+            subscription: { 
+              unsubscribe: () => {
+                const index = authListeners.indexOf(callback);
+                if (index > -1) {
+                  authListeners.splice(index, 1);
+                }
+              } 
+            } 
+          } 
+        };
+      },
     },
     // Real-time methods
     channel: (name: string) => ({
@@ -58,14 +145,31 @@ const createMockClient = () => {
     getChannels: () => [],
     removeChannel: () => {},
     from: () => ({
-      select: () => Promise.resolve({ data: [], error: { message: 'Supabase not configured', code: 'mock_error' } }),
-      insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
-      update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
-      upsert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
-      delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured', code: 'mock_error' } }),
-      single: function() { return this; },
-      eq: function() { return this; },
-      order: function() { return this; },
+      select: () => ({
+        eq: () => ({
+          single: () => Promise.resolve({ data: null, error: null }),
+          order: () => Promise.resolve({ data: [], error: null }),
+          then: (callback: any) => Promise.resolve({ data: [], error: null }).then(callback),
+        }),
+        order: () => ({
+          then: (callback: any) => Promise.resolve({ data: [], error: null }).then(callback),
+        }),
+        then: (callback: any) => Promise.resolve({ data: [], error: null }).then(callback),
+      }),
+      insert: () => ({
+        select: () => ({
+          single: () => Promise.resolve({ data: null, error: null }),
+        }),
+        then: (callback: any) => Promise.resolve({ data: null, error: null }).then(callback),
+      }),
+      update: () => ({
+        eq: () => Promise.resolve({ data: null, error: null }),
+        then: (callback: any) => Promise.resolve({ data: null, error: null }).then(callback),
+      }),
+      upsert: () => Promise.resolve({ data: null, error: null }),
+      delete: () => ({
+        eq: () => Promise.resolve({ data: null, error: null }),
+      }),
     }),
   };
 };
@@ -114,9 +218,43 @@ export const supabase = (() => {
       return response;
     };
 
+    // Create a custom storage adapter for web platform
+    const createCustomStorage = () => {
+      // For web platform, create a wrapper around localStorage with additional error handling
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        return {
+          getItem: async (key: string): Promise<string | null> => {
+            try {
+              return localStorage.getItem(key);
+            } catch (error) {
+              console.error('Storage getItem error:', error);
+              return null;
+            }
+          },
+          setItem: async (key: string, value: string): Promise<void> => {
+            try {
+              localStorage.setItem(key, value);
+            } catch (error) {
+              console.error('Storage setItem error:', error);
+            }
+          },
+          removeItem: async (key: string): Promise<void> => {
+            try {
+              localStorage.removeItem(key);
+            } catch (error) {
+              console.error('Storage removeItem error:', error);
+            }
+          }
+        };
+      }
+      
+      // For native platforms, use AsyncStorage
+      return AsyncStorage;
+    };
+
     const client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        storage: AsyncStorage,
+        storage: createCustomStorage(),
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false,
