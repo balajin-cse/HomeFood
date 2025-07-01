@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
@@ -408,6 +408,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // First, clear the user state to immediately update the UI
       setUser(null);
       
+      // Clear all Supabase channels to prevent subscription errors
+      try {
+        if (typeof supabase.removeAllChannels === 'function') {
+          supabase.removeAllChannels();
+        }
+      } catch (channelError) {
+        console.error('❌ Error clearing Supabase channels:', channelError);
+      }
+      
       // Then perform the actual logout
       const { error } = await supabase.auth.signOut();
       
@@ -440,8 +449,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error('❌ Failed to clear AsyncStorage:', storageError);
         }
       }
+      
+      // Clear any other app-specific storage
+      try {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          // Clear session storage as well for web
+          sessionStorage.clear();
+        }
+        
+        // Clear any app-specific storage items
+        await AsyncStorage.removeItem('cart');
+        await AsyncStorage.removeItem('favorites');
+        
+        console.log('✅ Cleared app-specific storage');
+      } catch (appStorageError) {
+        console.error('❌ Error clearing app storage:', appStorageError);
+      }
     } catch (error) {
       console.error('❌ Logout exception:', error);
+      
+      // Force clear user state even if logout fails
+      setUser(null);
     }
   };
 
