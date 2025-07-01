@@ -68,7 +68,19 @@ function CookProfileInterface() {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: logout, style: 'destructive' },
+        { 
+          text: 'Logout', 
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/(tabs)');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }, 
+          style: 'destructive' 
+        },
       ]
     );
   };
@@ -160,7 +172,7 @@ function CookProfileInterface() {
           
           <List.Item
             title="Push Notifications"
-            left={props => <List.Icon {...props} icon="bell" />}
+            left={() => <List.Icon icon="bell" />}
             right={() => (
               <Switch
                 value={notifications}
@@ -283,7 +295,19 @@ function CustomerProfileInterface() {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: logout, style: 'destructive' },
+        { 
+          text: 'Logout', 
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/(tabs)');
+            } catch (error) {
+              console.error('Logout error:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }, 
+          style: 'destructive' 
+        },
       ]
     );
   };

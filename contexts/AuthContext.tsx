@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 
 interface User {
   id: string;
@@ -402,16 +403,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     try {
       console.log('🚪 Logging out user');
+      
+      // First, clear the user state to immediately update the UI
+      setUser(null);
+      
+      // Then perform the actual logout
       const { error } = await supabase.auth.signOut();
+      
       if (error) {
         console.error('❌ Logout error:', error);
+        
+        // For web platform, try to clear localStorage as a fallback
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('supabase.auth.token');
+            console.log('✅ Manually cleared auth token from localStorage');
+          } catch (storageError) {
+            console.error('❌ Failed to clear localStorage:', storageError);
+          }
+        }
       } else {
         console.log('✅ Logout successful');
       }
+      
+      // Force clear AsyncStorage auth data for mobile platforms
+      if (Platform.OS !== 'web') {
+        try {
+          await AsyncStorage.removeItem('supabase.auth.token');
+          console.log('✅ Cleared auth token from AsyncStorage');
+        } catch (storageError) {
+          console.error('❌ Failed to clear AsyncStorage:', storageError);
+        }
+      }
     } catch (error) {
       console.error('❌ Logout exception:', error);
-    } finally {
-      setUser(null);
     }
   };
 
